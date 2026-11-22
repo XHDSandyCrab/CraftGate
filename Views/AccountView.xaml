@@ -287,14 +287,50 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,16">
                     <TextBlock Text="账户详情" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
                     <Border Background="#2D3036" CornerRadius="12" Padding="10,4" Margin="14,0,0,0" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <TextBlock Text="{Binding AccountTypeText}" FontSize="12" Foreground="{StaticResource AccentBrush}"/>
                     </Border>
                 </StackPanel>
 
+                <!-- 没有账户时的占位提示 -->
+                <TextBlock Grid.Row="1" Text="还没有账户，请先在左侧创建一个" FontSize="14"
+                           Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
                 <!-- 皮肤 3D 预览（站立动画）-->
                 <controls:SkinPreview3D Grid.Row="1" Skin="{Binding SkinImage}" Cape="{Binding CurrentCapeImage}"
                                         AutoActivate="True" Animate="True" HorizontalAlignment="Center"
-                                        Width="380" Height="520" MinHeight="360"/>
+                                        Width="380" Height="520" MinHeight="360">
+                    <controls:SkinPreview3D.Style>
+                        <Style TargetType="controls:SkinPreview3D">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </controls:SkinPreview3D.Style>
+                </controls:SkinPreview3D>
 
                 <!-- 皮肤加载中提示 -->
                 <TextBlock Grid.Row="1" Text="正在加载皮肤..." FontSize="13" Foreground="{StaticResource AccentBrush}"
@@ -306,6 +342,9 @@
                                 <DataTrigger Binding="{Binding IsLoadingSkinModal}" Value="True">
                                     <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBlock.Style>
@@ -313,7 +352,18 @@
 
                 <!-- 玩家名称（只显示，不编辑）-->
                 <TextBlock Grid.Row="2" Text="{Binding PlayerName}" FontSize="16" FontWeight="Bold"
-                           Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                           Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,8,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </Grid>
         </Border>
         </Grid><!-- /主内容层 -->
