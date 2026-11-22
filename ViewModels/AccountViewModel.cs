@@ -196,6 +196,19 @@ namespace CraftGate.ViewModels
         public ObservableCollection<CapeEntry> OnlineCapes { get; } = new ObservableCollection<CapeEntry>();
         public ICommand ShowBuiltinCapeTabCommand { get; }
         public ICommand ShowOnlineCapeTabCommand { get; }
+
+        // 披风分页（每页 12 个，两排）
+        public const int CapePageSize = 12;
+        public ObservableCollection<CapeEntry> BuiltinCapePage { get; } = new ObservableCollection<CapeEntry>();
+        public ObservableCollection<CapeEntry> OnlineCapePage { get; } = new ObservableCollection<CapeEntry>();
+        public ObservableCollection<PageItem> BuiltinCapePageNumbers { get; } = new ObservableCollection<PageItem>();
+        public ObservableCollection<PageItem> OnlineCapePageNumbers { get; } = new ObservableCollection<PageItem>();
+        private int _builtinCapePageIndex = 0;
+        private int _onlineCapePageIndex = 0;
+        public int TotalBuiltinCapePages => BuiltinCapes.Count == 0 ? 1 : (int)Math.Ceiling(BuiltinCapes.Count / (double)CapePageSize);
+        public int TotalOnlineCapePages => OnlineCapes.Count == 0 ? 1 : (int)Math.Ceiling(OnlineCapes.Count / (double)CapePageSize);
+        public ICommand GoBuiltinCapePageCommand { get; }
+        public ICommand GoOnlineCapePageCommand { get; }
         // 披风网站搜索
         private string _capeQuery = "";
         public string CapeQuery { get => _capeQuery; set => Set(ref _capeQuery, value); }
@@ -314,6 +327,18 @@ namespace CraftGate.ViewModels
             ShowBuiltinCapeTabCommand = new RelayCommand(_ => IsBuiltinCapeTab = true);
             ShowOnlineCapeTabCommand = new RelayCommand(_ => IsBuiltinCapeTab = false);
             SearchCapeCommand = new RelayCommand(async _ => await SearchCapesAsync());
+            GoBuiltinCapePageCommand = new RelayCommand(p =>
+            {
+                if (p is PageItem page && page.Number >= 0 && page.Number < TotalBuiltinCapePages)
+                    _builtinCapePageIndex = page.Number;
+                UpdateCapePages();
+            });
+            GoOnlineCapePageCommand = new RelayCommand(p =>
+            {
+                if (p is PageItem page && page.Number >= 0 && page.Number < TotalOnlineCapePages)
+                    _onlineCapePageIndex = page.Number;
+                UpdateCapePages();
+            });
             ConfirmSkinNameCommand = new RelayCommand(_ => ConfirmSkinName());
             CancelSkinNameCommand = new RelayCommand(_ => { IsSkinNameModalOpen = false; _pendingSkinPath = null; });
             GoBuiltinPageCommand = new RelayCommand(p =>
@@ -649,7 +674,30 @@ namespace CraftGate.ViewModels
                 foreach (var c in CapeLibrary) c.ModelSkin = modelSkin;
                 foreach (var c in BuiltinCapes) c.ModelSkin = modelSkin;
                 foreach (var c in OnlineCapes) c.ModelSkin = modelSkin;
+                UpdateCapePages();
             });
+        }
+
+        // 更新披风两栏的当前页与页码按钮
+        private void UpdateCapePages()
+        {
+            if (_builtinCapePageIndex >= TotalBuiltinCapePages) _builtinCapePageIndex = 0;
+            if (_onlineCapePageIndex >= TotalOnlineCapePages) _onlineCapePageIndex = 0;
+            BuiltinCapePage.Clear();
+            int bs = _builtinCapePageIndex * CapePageSize;
+            for (int i = bs; i < Math.Min(bs + CapePageSize, BuiltinCapes.Count); i++)
+                BuiltinCapePage.Add(BuiltinCapes[i]);
+            BuiltinCapePageNumbers.Clear();
+            for (int p = 0; p < TotalBuiltinCapePages; p++)
+                BuiltinCapePageNumbers.Add(new PageItem { Number = p, IsCurrent = (p == _builtinCapePageIndex) });
+
+            OnlineCapePage.Clear();
+            int os = _onlineCapePageIndex * CapePageSize;
+            for (int i = os; i < Math.Min(os + CapePageSize, OnlineCapes.Count); i++)
+                OnlineCapePage.Add(OnlineCapes[i]);
+            OnlineCapePageNumbers.Clear();
+            for (int p = 0; p < TotalOnlineCapePages; p++)
+                OnlineCapePageNumbers.Add(new PageItem { Number = p, IsCurrent = (p == _onlineCapePageIndex) });
         }
 
         // 披风网站搜索：按关键词拉 skinmc 披风，切到在线栏显示
@@ -663,6 +711,8 @@ namespace CraftGate.ViewModels
                 var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(modelSkinPath);
                 OnlineCapes.Clear();
                 foreach (var c in found) { c.ModelSkin = modelSkin; OnlineCapes.Add(c); }
+                _onlineCapePageIndex = 0;
+                UpdateCapePages();
             });
         }
 

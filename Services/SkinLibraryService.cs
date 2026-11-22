@@ -31,10 +31,13 @@ namespace CraftGate.Services
         public string Name { get; set; }
         public string TexturePath { get; set; }
         public ImageSource PreviewImage { get; set; }
-        // 原始披风图（64x32），供 3D 预览穿在角色身上
-        public ImageSource CapeImage { get; set; }
+        // 原始披风图（64x32），供 3D 预览穿在角色身上。
+        // 【必须触发通知】卡片在数据填充前已 Loaded，普通 auto 属性绑定拿不到后来的值 → 3D 不显示。
+        private ImageSource _capeImage;
+        public ImageSource CapeImage { get => _capeImage; set => Set(ref _capeImage, value); }
         // 3D 预览用的角色皮肤（1280 放大图），由 ViewModel 填充（当前皮肤或默认 Steve）
-        public ImageSource ModelSkin { get; set; }
+        private ImageSource _modelSkin;
+        public ImageSource ModelSkin { get => _modelSkin; set => Set(ref _modelSkin, value); }
         public string Source { get; set; } = "本地";
         private bool _isSelected;
         public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
