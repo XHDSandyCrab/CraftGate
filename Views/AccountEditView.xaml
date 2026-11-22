@@ -443,25 +443,15 @@
                                HorizontalAlignment="Center" Margin="0,0,0,8"/>
                     <TextBlock Text="给这个皮肤起个名字吧" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                HorizontalAlignment="Center" Margin="0,0,0,20"/>
-                            <TextBox Text="{Binding NewSkinName, UpdateSourceTrigger=PropertyChanged}" MaxLength="16"
-                                     Height="38" FontSize="14" Padding="12,8" VerticalContentAlignment="Center"
-                                     Background="#0A000000" Foreground="{StaticResource TextPrimaryBrush}"
-                                     CaretBrush="{StaticResource AccentBrush}" Margin="0,0,0,20"
-                                     KeyDown="SkinNameBox_KeyDown" x:Name="SkinNameBox">
-                                <TextBox.Template>
-                                    <ControlTemplate TargetType="TextBox">
-                                        <Border x:Name="InputBorder" Background="#0A000000" BorderBrush="{StaticResource AccentBrush}"
-                                                BorderThickness="1" CornerRadius="8">
-                                            <ScrollViewer x:Name="PART_ContentHost" Margin="12,8" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsFocused" Value="True">
-                                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </TextBox.Template>
-                            </TextBox>
+                            <!-- 圆角由外层 Border 提供，TextBox 保持透明无模板，避免文字被挤扁 -->
+                            <Border Background="#0A000000" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                    CornerRadius="8" Height="40" Margin="0,0,0,20">
+                                <TextBox Text="{Binding NewSkinName, UpdateSourceTrigger=PropertyChanged}" MaxLength="16"
+                                         FontSize="14" Background="Transparent" Foreground="{StaticResource TextPrimaryBrush}"
+                                         CaretBrush="{StaticResource AccentBrush}" BorderThickness="0"
+                                         VerticalContentAlignment="Center" Padding="12,0"
+                                         KeyDown="SkinNameBox_KeyDown" x:Name="SkinNameBox"/>
+                            </Border>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <Button Content="取消" Command="{Binding CancelSkinNameCommand}" Style="{StaticResource SoftButton}"
                                 Width="100" Height="36" Margin="0,0,10,0"/>
