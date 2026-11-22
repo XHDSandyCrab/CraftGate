@@ -43,6 +43,9 @@ namespace CraftGate.Services
             public string ReleaseUrl;     // 发布页地址
             public string ReleaseNotes;   // 更新日志（GitHub Release body）
             public bool IsMandatory;      // 是否强制更新（日志含 [强制更新]/MUST_UPDATE 标记时，不显示关闭叉叉）
+            public string DownloadUrl;    // exe 附件直链（Release assets）
+            public string AssetName;      // 附件文件名
+            public long AssetSize;        // 附件字节数
             public string Error;          // 失败原因
         }
 
@@ -70,6 +73,21 @@ namespace CraftGate.Services
                 result.IsMandatory = System.Text.RegularExpressions.Regex.IsMatch(
                     result.ReleaseNotes, @"(\[强制更新\]|\[必须更新\]|MUST_UPDATE)",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                // 解析 Release 附件里的 exe（立即更新要下载它）
+                if (obj["assets"] is JArray assets)
+                {
+                    foreach (var asset in assets)
+                    {
+                        string name = asset["name"]?.ToString() ?? "";
+                        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result.AssetName = name;
+                            result.AssetSize = asset["size"]?.Value<long>() ?? 0;
+                            result.DownloadUrl = asset["browser_download_url"]?.ToString();
+                            break;
+                        }
+                    }
+                }
                 if (string.IsNullOrEmpty(latest))
                 {
                     result.Error = "更新信息格式异常";

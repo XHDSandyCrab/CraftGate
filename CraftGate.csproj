@@ -206,6 +206,7 @@
     <Compile Include="Services\SkinLibraryService.cs" />
     <Compile Include="Services\VersionService.cs" />
     <Compile Include="Services\UpdateService.cs" />
+    <Compile Include="Services\UpdateInstaller.cs" />
     <Compile Include="Services\VisibilityService.cs" />
     <Compile Include="Services\WorldTemplateService.cs" />
     <Compile Include="ViewModels\AccountViewModel.cs" />
