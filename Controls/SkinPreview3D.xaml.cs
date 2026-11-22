@@ -370,9 +370,9 @@ namespace CraftGate.Controls
 
                 var transform = new Transform3DGroup();
                 transform.Children.Add(new RotateTransform3D(_sway));
-                // 【披风卡】背面朝向相机：转 180°-32°，这样披在背后(-Z)的披风才可见
-                // 普通皮肤卡：-32° 正面 3/4 视角
-                double yAngle = ShowBack ? 148 : -32;
+                // 【披风卡】背面朝向相机：接近180°让披风(-Z面)正对相机；用176°留一点立体侧边
+                // 之前148°披风朝相机偏右，只在侧面露一条。普通皮肤卡：-32° 正面 3/4 视角
+                double yAngle = ShowBack ? 176 : -32;
                 transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), yAngle)));
                 transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), -10)));
 
@@ -409,10 +409,12 @@ namespace CraftGate.Controls
                 // Minecraft 标准披风 UV（64x32，实测 skinmc#172458 原图 + skinview3d 源码）：
                 // 左侧边 x=0..1；外层(花纹面) x=1..11；右侧边 x=11..12；内层(深色) x=12..22；
                 // 顶边 y=0..1，正面 y=1..17。
-                // 【关键】WPF/DirectX 的纹理 UV 原点在【左下角】，贴图像素原点在左上角 → V 必须翻转！
-                // skinview3d 也是 1.0 - y/textureHeight。之前 V 没翻转 → 取到贴图下半(y15-31)透明区 → 显示白色。
+                // 【关键】WPF 的 ImageBrush 用于 3D 时 UV 原点在【左上角】(与贴图像素一致)，V 不翻转！
+                // (three.js/skinview3d 原点在左下才需要 1.0-y/H)。之前翻转 → 采到 y31~15 透明区 → 白底。
+                // 依据：反编译游戏 26.3 PlayerCapeModel.class → texOffs(0,0)+addBox(-5,0,-1,10,16,1)，
+                // 标准 box UV 展开：外层(1,1)-(11,17)、内层(12,1)-(22,17)、侧边(0,1)-(1,17)。
                 double U(double x) => x / 64.0;
-                double V(double y) => 1.0 - y / 32.0;
+                double V(double y) => y / 32.0;
 
                 var positions = new Point3DCollection();
                 var texCoords = new PointCollection();
@@ -474,8 +476,12 @@ namespace CraftGate.Controls
                 swingTransform.Children.Add(new RotateTransform3D(_capeSwing));
                 swingTransform.Children.Add(new TranslateTransform3D(0, pivotY, pivotZ));
 
+                var capeGeom = new GeometryModel3D(mesh, material)
+                {
+                    BackMaterial = material // 双面渲染：无论顶点绕序/朝向都能看见披风
+                };
                 var capeGroup = new Model3DGroup();
-                capeGroup.Children.Add(new GeometryModel3D(mesh, material));
+                capeGroup.Children.Add(capeGeom);
                 capeGroup.Transform = swingTransform;
                 group.Children.Add(capeGroup);
             }
