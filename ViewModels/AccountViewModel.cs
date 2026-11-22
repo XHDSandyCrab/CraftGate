@@ -205,6 +205,10 @@ namespace CraftGate.ViewModels
         public ObservableCollection<PageItem> OnlineCapePageNumbers { get; } = new ObservableCollection<PageItem>();
         private int _builtinCapePageIndex = 0;
         private int _onlineCapePageIndex = 0;
+        // 懒加载：skinmc 已加载的批次数（每批48张=4个显示页），翻到最后一批时自动加载下一批
+        private int _loadedCapeBatches = 0;
+        private bool _isLoadingMoreCapes;
+        public bool IsLoadingMoreCapes { get => _isLoadingMoreCapes; set => Set(ref _isLoadingMoreCapes, value); }
         public int TotalBuiltinCapePages => BuiltinCapes.Count == 0 ? 1 : (int)Math.Ceiling(BuiltinCapes.Count / (double)CapePageSize);
         public int TotalOnlineCapePages => OnlineCapes.Count == 0 ? 1 : (int)Math.Ceiling(OnlineCapes.Count / (double)CapePageSize);
         public ICommand GoBuiltinCapePageCommand { get; }
@@ -235,6 +239,8 @@ namespace CraftGate.ViewModels
                     OnPropertyChanged(nameof(SelectedSkinName));
                     // 变更即保存：立即应用到账户并刷新预览/大头
                     ApplySkin(value);
+                    // 披风卡的角色也要跟着换成当前选中的皮肤
+                    if (CapeLibrary.Count > 0) RefreshCapeModelSkin();
                 }
             }
         }
@@ -333,10 +339,16 @@ namespace CraftGate.ViewModels
                     _builtinCapePageIndex = page.Number;
                 UpdateCapePages();
             });
-            GoOnlineCapePageCommand = new RelayCommand(p =>
+            GoOnlineCapePageCommand = new RelayCommand(async p =>
             {
                 if (p is PageItem page && page.Number >= 0 && page.Number < TotalOnlineCapePages)
+                {
                     _onlineCapePageIndex = page.Number;
+                    // 翻到已加载的最后一批的末页 → 自动加载下一批
+                    int loadedPages = _loadedCapeBatches * (48 / CapePageSize); // 每批48张=4页
+                    if (_onlineCapePageIndex >= loadedPages - 1)
+                        await LoadMoreCapesAsync();
+                }
                 UpdateCapePages();
             });
             ConfirmSkinNameCommand = new RelayCommand(_ => ConfirmSkinName());
@@ -661,21 +673,64 @@ namespace CraftGate.ViewModels
                 var onlineCapes = await SkinLibraryService.ScanOnlineCapesAsync().ConfigureAwait(false);
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    foreach (var c in localCapes) { CapeLibrary.Add(c); BuiltinCapes.Add(c); }
-                    foreach (var c in onlineCapes) { CapeLibrary.Add(c); OnlineCapes.Add(c); }
+                foreach (var c in localCapes) { CapeLibrary.Add(c); BuiltinCapes.Add(c); }
+                foreach (var c in onlineCapes) { CapeLibrary.Add(c); OnlineCapes.Add(c); }
+                _loadedCapeBatches = 1; // 首批48张=4个显示页
                 });
             }
             // 披风卡片用 3D 角色预览：给每张卡填充角色皮肤（当前皮肤 or 默认 Steve）。
             // 同样切回 UI 线程改绑定属性。
-            var modelSkinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "skins", "Steve.png");
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(modelSkinPath);
-                foreach (var c in CapeLibrary) c.ModelSkin = modelSkin;
-                foreach (var c in BuiltinCapes) c.ModelSkin = modelSkin;
-                foreach (var c in OnlineCapes) c.ModelSkin = modelSkin;
+                RefreshCapeModelSkin();
                 UpdateCapePages();
             });
+        }
+
+        // 懒加载下一批披风（skinmc 下一页 48 张）
+        private async Task LoadMoreCapesAsync()
+        {
+            if (_isLoadingMoreCapes) return;
+            _isLoadingMoreCapes = true;
+            IsLoadingMoreCapes = true;
+            try
+            {
+                int nextBatch = _loadedCapeBatches + 1; // 第几批（对应 skinmc page=N）
+                var more = await SkinLibraryService.ScanOnlineCapesPageAsync(nextBatch).ConfigureAwait(false);
+                await Application.Current.Dispatcher.InvokeAsync(new System.Action(() =>
+                {
+                    int before = OnlineCapes.Count;
+                    foreach (var c in more)
+                    {
+                        // 按 TexturePath 去重，避免重复批次的缓存文件重复加入
+                        if (OnlineCapes.Any(x => x.TexturePath == c.TexturePath)) continue;
+                        OnlineCapes.Add(c);
+                        CapeLibrary.Add(c);
+                    }
+                    if (OnlineCapes.Count > before) _loadedCapeBatches = nextBatch;
+                    RefreshCapeModelSkin();
+                    UpdateCapePages();
+                }));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("加载更多披风失败: " + ex.Message);
+            }
+            finally
+            {
+                _isLoadingMoreCapes = false;
+                IsLoadingMoreCapes = false;
+            }
+        }
+
+        // 刷新所有披风卡的角色皮肤（用当前选中的皮肤搭配披风，而不是默认 Steve）
+        private void RefreshCapeModelSkin()
+        {
+            var modelSkinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "skins", "Steve.png");
+            var skin = SelectedSkin?.SkinImage ?? SkinImage ?? SkinLibraryService.LoadScaledSkin(modelSkinPath);
+            foreach (var c in CapeLibrary) c.ModelSkin = skin;
+            foreach (var c in BuiltinCapes) c.ModelSkin = skin;
+            foreach (var c in OnlineCapes) c.ModelSkin = skin;
         }
 
         // 更新披风两栏的当前页与页码按钮
@@ -704,13 +759,12 @@ namespace CraftGate.ViewModels
         private async Task SearchCapesAsync()
         {
             IsBuiltinCapeTab = false;
-            var modelSkinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "skins", "Steve.png");
             var found = await SkinLibraryService.SearchCapesAsync(CapeQuery).ConfigureAwait(false);
             Application.Current.Dispatcher.Invoke(() =>
             {
-                var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(modelSkinPath);
                 OnlineCapes.Clear();
-                foreach (var c in found) { c.ModelSkin = modelSkin; OnlineCapes.Add(c); }
+                foreach (var c in found) OnlineCapes.Add(c);
+                RefreshCapeModelSkin();
                 _onlineCapePageIndex = 0;
                 UpdateCapePages();
             });

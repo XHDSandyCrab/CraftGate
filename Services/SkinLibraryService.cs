@@ -235,15 +235,17 @@ namespace CraftGate.Services
         /// 联网扫描 skinmc.net 免费披风库（失败回退空列表）。
         /// 列表页 HTML 里形如 /cape/{id} 的链接 → 原图 https://skinmc.net/capes/{id}/download（64x32 PNG）。
         /// </summary>
-        public static async Task<List<CapeEntry>> ScanOnlineCapesAsync(int offset = 0)
+        public static Task<List<CapeEntry>> ScanOnlineCapesAsync(int offset = 0)
+            => ScanOnlineCapesPageAsync(offset / 48 + 1);
+
+        /// <summary>按 skinmc 页码加载披风（每页约 48 张）。</summary>
+        public static async Task<List<CapeEntry>> ScanOnlineCapesPageAsync(int page)
         {
             var result = new List<CapeEntry>();
             string cacheDir = Path.Combine(PathManager.SkinsCacheDir, "library", "capes");
             Directory.CreateDirectory(cacheDir);
             try
             {
-                // skinmc 分页：?page=N；offset 换算成页码（每页约 24~48 张）
-                int page = offset / 24 + 1;
                 string listUrl = $"https://skinmc.net/capes/custom?page={page}";
                 string html = await _http.GetStringAsync(listUrl).ConfigureAwait(false);
 
