@@ -67,12 +67,12 @@ namespace CraftGate.Services
         {
             try
             {
-                // 首次运行：创建默认 Steve 账户并立即落盘，避免"启动时没有账户"
+                // 【按用户要求】首次运行不创建任何账户，账户列表保持为空，由用户自己创建
                 if (!File.Exists(AccountFile))
                 {
                     Accounts = new List<OfflineAccount>();
-                    EnsureDefault();
-                    Save();
+                    _current = null;
+                    _currentId = null;
                     return;
                 }
                 string json = File.ReadAllText(AccountFile);
@@ -87,29 +87,19 @@ namespace CraftGate.Services
                     var one = JsonConvert.DeserializeObject<OfflineAccount>(json);
                     Accounts = one != null ? new List<OfflineAccount> { one } : new List<OfflineAccount>();
                 }
-                EnsureDefault();
                 // 优先恢复上次选中的账户；没有记录或记录失效则默认第一项
                 string savedId = null;
                 try { if (File.Exists(CurrentIdFile)) savedId = File.ReadAllText(CurrentIdFile).Trim(); } catch { }
                 _current = Accounts.FirstOrDefault(a => a.Id == savedId)
                            ?? Accounts.FirstOrDefault();
                 _currentId = _current?.Id;
-                // 首次运行（无记录）也落盘当前选择，之后切换账户会更新
-                try { if (!File.Exists(CurrentIdFile)) File.WriteAllText(CurrentIdFile, _currentId ?? ""); } catch { }
             }
             catch
             {
-                EnsureDefault();
+                Accounts = new List<OfflineAccount>();
+                _current = null;
+                _currentId = null;
             }
-        }
-
-        private static void EnsureDefault()
-        {
-            if (Accounts.Count == 0)
-                Accounts.Add(new OfflineAccount { Username = "Steve" });
-            if (_current == null)
-                _current = Accounts.FirstOrDefault();
-            _currentId = _current?.Id;
         }
 
         public static void Save()

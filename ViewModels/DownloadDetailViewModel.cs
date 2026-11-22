@@ -414,8 +414,9 @@ namespace CraftGate.ViewModels
             {
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    DownloadStatus = msg; DownloadProgress = progress * 0.4;
-                    mainWindow?.UpdateToast((int)(progress * 40), msg);
+                    // VersionDownloader 传来的 progress 已经是整体 0~100，不要二次缩放（否则未满就爆表）
+                    DownloadStatus = msg; DownloadProgress = progress;
+                    mainWindow?.UpdateToast((int)progress, msg);
                 });
             });
             if (!vanillaOk)
@@ -436,8 +437,10 @@ namespace CraftGate.ViewModels
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        DownloadStatus = msg; DownloadProgress = 40 + progress * 0.3;
-                        mainWindow?.UpdateToast(40 + (int)(progress * 30), msg);
+                        // progress 是 0~100，映射到整体 40~70（不要 ×30，否则爆表）
+                        DownloadStatus = msg;
+                        DownloadProgress = 40 + progress * 0.3;
+                        mainWindow?.UpdateToast(40 + (int)(progress * 0.3), msg);
                     });
                 });
                 if (built != null) modsTargetVersion = built;
