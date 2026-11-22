@@ -146,12 +146,9 @@ namespace CraftGate.Controls
         private readonly AxisAngleRotation3D _rightArmRot =
             new AxisAngleRotation3D(new Vector3D(0, 0, 1), 0);
 
-        // ===== 披风飘动：分段网格 + 逐帧更新顶点（仿游戏里前后飘动）=====
-        private MeshGeometry3D _capeMesh;          // 披风网格（顶点每帧更新）
-        private Point3D[] _capeBasePositions;      // 披风静止时的基准顶点
-        private double[] _capePhase;               // 每个顶点按高度分配的相位（越靠下摆幅越大）
-        private static int _capeAnimSubscriberCount; // CompositionTarget 订阅计数（多个预览控件共享一个循环）
-        private DateTime _capeAnimStart;
+        // ===== 披风：刚体长方体 + 整体绕肩部前后摆动（不是曲面波浪）=====
+        // 参考 skinview3d：BoxGeometry(10,16,1)，pivot 在肩部，rotation.x 前后摆
+        private AxisAngleRotation3D _capeSwing;    // 披风绕 X 轴前后摆（刚体）
 
         public SkinPreview3D()
         {
@@ -182,62 +179,27 @@ namespace CraftGate.Controls
             StartCapeWave();
         }
 
-        // ===== 披风飘动动画实现 =====
+        // ===== 披风飘动：刚体整体绕肩部前后摆（游戏同款，不是曲面波浪）=====
+        // skinview3d 默认披风向后倾 10.8°，摆动就是绕肩部 pivot 改 rotation.x
+        private const double CapeBaseAngle = 10.8;  // 默认后倾角
         private void StartCapeWave()
         {
-            if (_capeMesh == null || _capeBasePositions == null) return;
-            if (_capeWaveActive) return;
-            _capeWaveActive = true;
-            _capeAnimStart = DateTime.Now;
-            _activeCapes.Add(this);
-            if (_capeAnimSubscriberCount == 0)
-                CompositionTarget.Rendering += OnCapeRendering;
-            _capeAnimSubscriberCount++;
+            if (_capeSwing == null) return;
+            var ease = new SineEase { EasingMode = EasingMode.EaseInOut };
+            // 绕肩部 X 轴前后摆：从后倾到前摆，整体刚体运动，保持长方体不变形
+            _capeSwing.BeginAnimation(AxisAngleRotation3D.AngleProperty, new DoubleAnimation
+            {
+                From = CapeBaseAngle - 8, To = CapeBaseAngle + 14,
+                Duration = TimeSpan.FromSeconds(2.2), AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever, EasingFunction = ease
+            });
         }
 
         private void StopCapeWave()
         {
-            if (!_capeWaveActive) return;
-            _capeWaveActive = false;
-            _activeCapes.Remove(this);
-            _capeAnimSubscriberCount = Math.Max(0, _capeAnimSubscriberCount - 1);
-            if (_capeAnimSubscriberCount == 0)
-                CompositionTarget.Rendering -= OnCapeRendering;
-            // 恢复静止顶点
-            if (_capeMesh != null && _capeBasePositions != null)
-                _capeMesh.Positions = new Point3DCollection(_capeBasePositions);
-        }
-
-        private bool _capeWaveActive;
-
-        private static void OnCapeRendering(object sender, EventArgs e)
-        {
-            // 静态循环，遍历所有激活的预览控件更新披风顶点
-            foreach (var c in _activeCapes)
-                c.UpdateCapeWave();
-        }
-
-        private static readonly System.Collections.Generic.HashSet<SkinPreview3D> _activeCapes =
-            new System.Collections.Generic.HashSet<SkinPreview3D>();
-
-        private void UpdateCapeWave()
-        {
-            if (!_capeWaveActive || _capeMesh == null || _capeBasePositions == null || _capePhase == null) return;
-            double t = (DateTime.Now - _capeAnimStart).TotalSeconds;
-            int n = _capeBasePositions.Length;
-            var pts = new Point3D[n];
-            for (int i = 0; i < n; i++)
-            {
-                var basePt = _capeBasePositions[i];
-                // 越靠下摆幅越大：用 phase 数组（顶部 0 → 底部 1）
-                double amp = 0.55 * _capePhase[i];
-                // 前后飘动（Z 方向正弦）+ 轻微左右（X 方向）、上下的涟漪
-                double wave = Math.Sin(t * 2.6 + _capePhase[i] * 3.0) * amp;
-                double sway = Math.Sin(t * 1.7 + _capePhase[i] * 2.2) * amp * 0.35;
-                pts[i] = new Point3D(basePt.X + sway, basePt.Y, basePt.Z + wave);
-            }
-            // 直接替换 Positions 集合，触发 WPF 3D 重绘
-            _capeMesh.Positions = new Point3DCollection(pts);
+            if (_capeSwing == null) return;
+            _capeSwing.BeginAnimation(AxisAngleRotation3D.AngleProperty, null);
+            _capeSwing.Angle = CapeBaseAngle; // 静止时保持默认后倾
         }
 
         private void BuildModel()
@@ -251,8 +213,8 @@ namespace CraftGate.Controls
             if (!IsInitialized) return;
 
             ModelHost.Content = null; // 先清空
-            StopCapeWave();           // 停掉旧披风动画，避免逐帧更新已废弃的 mesh
-            _capeMesh = null; _capeBasePositions = null; _capePhase = null;
+            StopCapeWave();           // 停掉旧披风刚体摆动动画
+            _capeSwing = null;
 
             var bmp = Skin as BitmapSource;
             if (bmp == null) return;
@@ -427,101 +389,92 @@ namespace CraftGate.Controls
             }
         }
 
-        // 披风：在角色背后（-Z 方向）渲染分段立体网格。
-        // 竖直分 8 段、带厚度，形成"长方体"轮廓；每段顶点按高度分配相位，供飘动动画逐帧更新。
+        // 披风：刚体长方体盒子 10x16x1（skinview3d BoxGeometry(10,16,1)），以肩部为 pivot 前后摆。
+        // 【关键】不是逐顶点曲面波浪——顶点固定，靠整个模型绕肩部旋转实现游戏同款飘动。
         private void AddCape(Model3DGroup group, BitmapSource cape)
         {
             try
             {
-                const int segments = 8;                 // 竖向分段数（越多越平滑）
-                double cw = 10, ch = 16, z = -2.4, top = 8; // 宽/高/背向偏移/顶边Y
-                double thickness = 0.5;                 // 披风厚度，形成侧面（立体感）
+                const double cw = 10, ch = 16, depth = 1; // 宽10 高16 厚1（标准长方体）
+                // 位置：披在角色背后。skinview3d: cape pivot (y=8,z=-2)，box 中心 (y=-8,z=0.5)
+                // → 盒顶在 y=8(肩)，底在 y=-8，Z 中心 -2+0.5=-1.5（身体后面，身体厚4 => 背面 z=-2）
+                double pivotY = 8, pivotZ = -2.0;
+                double centerY = pivotY - ch / 2.0;   // 0
+                double centerZ = pivotZ + depth / 2.0; // -1.5
 
-                // 完整原图做 ImageBrush（不用 CroppedBitmap，避免多模型共享缓存），用 UV 坐标定位各面。
                 var brush = new ImageBrush(cape) { Stretch = Stretch.Fill };
                 RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
                 var material = new DiffuseMaterial(brush);
 
-                // ===== Minecraft 标准披风 UV（64x32 贴图，查证自 NSSkinRender / skinview3d / CSS 3D skin viewer）=====
-                // 外层(玩家看到的外面): x=1..11, y=1..17       内层(贴身): x=11..21, y=1..17
-                // 左侧边: x=0..1, y=1..17                      右侧边: x=21..22, y=1..17
-                // 顶边: x=1..11, y=0..1                        底边: x=11..21, y=0..1
-                // 归一化到 [0,1]：U=x/64, V=y/32（WPF ImageBrush UV 原点左上、V 向下，与贴图像素一致）
+                // Minecraft 标准披风 UV（64x32）：外层 x=1..11,y=1..17；内层 x=11..21,y=1..17；
+                // 左侧 x=0..1；右侧 x=21..22；顶 x=1..11,y=0..1；底 x=11..21,y=0..1
                 double U(double x) => x / 64.0;
                 double V(double y) => y / 32.0;
 
-                // 外层/内层：各按 seg+1 行、2 列顶点，uvX 从面左到右、uvY 从顶到底
-                // zOuter(-2.4-thickness) 是远离身体的外面；zInner(-2.4) 贴身
                 var positions = new Point3DCollection();
                 var texCoords = new PointCollection();
                 var indices = new Int32Collection();
-                var phases = new System.Collections.Generic.List<double>();
 
-                void AddSheet(double zPos, double uLeft, double uRight, bool flipX)
+                // 加一个矩形面：4 顶点 2 三角形。pts 按左上、右上、右下、左下顺序，uv 对应。
+                void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3,
+                             double u0, double v0, double u1, double v1)
                 {
-                    int rowStart = positions.Count;
-                    for (int s = 0; s <= segments; s++)
-                    {
-                        double t = (double)s / segments;          // 0=顶 1=底
-                        double y = top - ch * t;
-                        double uvv = V(1 + 16 * t);              // 面 UV 的 V：y=1..17
-                        // 顶点 X 顺序：flipX 时左右互换，配合三角形绕序让法线朝外
-                        double[] xs = flipX ? new[] { cw / 2, -cw / 2 } : new[] { -cw / 2, cw / 2 };
-                        double[] us = flipX ? new[] { uRight, uLeft } : new[] { uLeft, uRight };
-                        for (int c = 0; c < 2; c++)
-                        {
-                            positions.Add(new Point3D(xs[c], y, zPos));
-                            texCoords.Add(new Point(us[c], uvv));
-                            phases.Add(t); // 摆幅相位：顶部 0 底部 1
-                        }
-                    }
-                    for (int s = 0; s < segments; s++)
-                    {
-                        int a = rowStart + s * 2, b = a + 1, c = a + 2, d = a + 3;
-                        indices.Add(a); indices.Add(b); indices.Add(c);
-                        indices.Add(b); indices.Add(d); indices.Add(c);
-                    }
+                    int b = positions.Count;
+                    positions.Add(p0); positions.Add(p1); positions.Add(p2); positions.Add(p3);
+                    texCoords.Add(new Point(u0, v0)); texCoords.Add(new Point(u1, v0));
+                    texCoords.Add(new Point(u1, v1)); texCoords.Add(new Point(u0, v1));
+                    indices.Add(b); indices.Add(b + 1); indices.Add(b + 2);
+                    indices.Add(b); indices.Add(b + 2); indices.Add(b + 3);
                 }
 
-                // 外层(外面,朝-Z) 用 x=1..11；内层(贴身,朝+Z) 用 x=11..21
-                AddSheet(z - thickness, U(1), U(11), false);
-                AddSheet(z, U(11), U(21), true);
+                double xL = -cw / 2, xR = cw / 2;
+                double yT = centerY + ch / 2, yB = centerY - ch / 2; // 8 / -8
+                double zFront = centerZ + depth / 2, zBack = centerZ - depth / 2; // -1.0 / -2.0
 
-                // 左右侧边：x=0..1 / x=21..22，连接两层
-                void AddSide(double xPos, double uLeft, double uRight)
-                {
-                    int start = positions.Count;
-                    for (int s = 0; s <= segments; s++)
-                    {
-                        double t = (double)s / segments;
-                        double y = top - ch * t;
-                        double uvv = V(1 + 16 * t);
-                        positions.Add(new Point3D(xPos, y, z));
-                        texCoords.Add(new Point(uLeft, uvv)); phases.Add(t);
-                        positions.Add(new Point3D(xPos, y, z - thickness));
-                        texCoords.Add(new Point(uRight, uvv)); phases.Add(t);
-                    }
-                    for (int s = 0; s < segments; s++)
-                    {
-                        int a = start + s * 2, b = a + 1, c = a + 2, d = a + 3;
-                        indices.Add(a); indices.Add(c); indices.Add(b);
-                        indices.Add(b); indices.Add(c); indices.Add(d);
-                    }
-                }
-                AddSide(-cw / 2, U(0), U(1));
-                AddSide(cw / 2, U(21), U(22));
+                // 外层(玩家看到的外面，朝 -Z)：x=1..11, y=1..17
+                AddQuad(new Point3D(xR, yT, zBack), new Point3D(xL, yT, zBack),
+                        new Point3D(xL, yB, zBack), new Point3D(xR, yB, zBack),
+                        U(1), V(1), U(11), V(17));
+                // 内层(贴身，朝 +Z)：x=11..21
+                AddQuad(new Point3D(xL, yT, zFront), new Point3D(xR, yT, zFront),
+                        new Point3D(xR, yB, zFront), new Point3D(xL, yB, zFront),
+                        U(11), V(1), U(21), V(17));
+                // 左侧边 x=0..1
+                AddQuad(new Point3D(xL, yT, zFront), new Point3D(xL, yT, zBack),
+                        new Point3D(xL, yB, zBack), new Point3D(xL, yB, zFront),
+                        U(0), V(1), U(1), V(17));
+                // 右侧边 x=21..22
+                AddQuad(new Point3D(xR, yT, zBack), new Point3D(xR, yT, zFront),
+                        new Point3D(xR, yB, zFront), new Point3D(xR, yB, zBack),
+                        U(21), V(1), U(22), V(17));
+                // 顶边 x=1..11,y=0..1
+                AddQuad(new Point3D(xL, yT, zBack), new Point3D(xR, yT, zBack),
+                        new Point3D(xR, yT, zFront), new Point3D(xL, yT, zFront),
+                        U(1), V(0), U(11), V(1));
+                // 底边 x=11..21,y=0..1
+                AddQuad(new Point3D(xR, yB, zBack), new Point3D(xL, yB, zBack),
+                        new Point3D(xL, yB, zFront), new Point3D(xR, yB, zFront),
+                        U(11), V(0), U(21), V(1));
 
-                _capeMesh = new MeshGeometry3D
+                var mesh = new MeshGeometry3D
                 {
                     Positions = positions,
                     TextureCoordinates = texCoords,
                     TriangleIndices = indices
                 };
-                _capeBasePositions = new Point3D[positions.Count];
-                positions.CopyTo(_capeBasePositions, 0);
-                _capePhase = phases.ToArray();
+                mesh.Freeze(); // 刚体：顶点不再每帧改，冻结省开销
 
-                group.Children.Add(new GeometryModel3D(_capeMesh, material));
+                // 绕肩部 pivot 的刚体旋转（平移到肩→绕X摆→平移回）
+                _capeSwing = new AxisAngleRotation3D(new Vector3D(1, 0, 0), CapeBaseAngle);
+                var swingTransform = new Transform3DGroup();
+                swingTransform.Children.Add(new TranslateTransform3D(0, -pivotY, -pivotZ));
+                swingTransform.Children.Add(new RotateTransform3D(_capeSwing));
+                swingTransform.Children.Add(new TranslateTransform3D(0, pivotY, pivotZ));
+
+                var capeGroup = new Model3DGroup();
+                capeGroup.Children.Add(new GeometryModel3D(mesh, material));
+                capeGroup.Transform = swingTransform;
+                group.Children.Add(capeGroup);
             }
             catch (Exception ex)
             {
