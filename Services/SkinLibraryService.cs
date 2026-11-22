@@ -371,8 +371,11 @@ namespace CraftGate.Services
             {
                 var bmp = LoadBitmap(path);
                 if (bmp == null) return null;
-                // 披风背面 UV 通常在 (0,0)-(16,16)，取前 12x16 做预览
-                int w = Math.Min(12, bmp.PixelWidth), h = Math.Min(16, bmp.PixelHeight);
+                // 【标准 UV】披风外层(玩家看到的外面)在 64x32 贴图的 (1,1) 起，10x16。
+                // 之前取 (0,0)-(12,16) 是错的，会把侧边/内层一并截进来导致图案错乱。
+                int srcX = 1, srcY = 1;
+                int w = Math.Min(10, bmp.PixelWidth - srcX), h = Math.Min(16, bmp.PixelHeight - srcY);
+                if (w <= 0 || h <= 0) return null;
                 int stride = bmp.PixelWidth * 4;
                 var px = new byte[bmp.PixelHeight * stride];
                 bmp.CopyPixels(px, stride, 0);
@@ -380,7 +383,7 @@ namespace CraftGate.Services
                 for (int y = 0; y < h; y++)
                     for (int x = 0; x < w; x++)
                     {
-                        int s = (y * bmp.PixelWidth + x) * 4;
+                        int s = ((y + srcY) * bmp.PixelWidth + (x + srcX)) * 4;
                         int d = (y * w + x) * 4;
                         outPx[d] = px[s]; outPx[d + 1] = px[s + 1]; outPx[d + 2] = px[s + 2]; outPx[d + 3] = px[s + 3];
                     }

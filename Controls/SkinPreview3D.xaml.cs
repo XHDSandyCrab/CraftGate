@@ -437,40 +437,42 @@ namespace CraftGate.Controls
                 double cw = 10, ch = 16, z = -2.4, top = 8; // 宽/高/背向偏移/顶边Y
                 double thickness = 0.5;                 // 披风厚度，形成侧面（立体感）
 
-                // 【修复】不用 CroppedBitmap（多个 3D 模型间疑似被 WPF 共享缓存，导致所有披风显示成同一张）。
-                // 改用完整原图做 ImageBrush + UV 坐标定位到 (0,0)-(12/64,16/32) 区域，每张卡用自己的图。
-                var brush = new ImageBrush(cape) { Stretch = Stretch.Fill, Viewport = new Rect(0, 0, 1, 1),
-                                                  ViewportUnits = BrushMappingMode.RelativeToBoundingBox };
+                // 完整原图做 ImageBrush（不用 CroppedBitmap，避免多模型共享缓存），用 UV 坐标定位各面。
+                var brush = new ImageBrush(cape) { Stretch = Stretch.Fill };
                 RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
                 var material = new DiffuseMaterial(brush);
-                // UV 范围：披风主图在 64x32 贴图的左上 12x16 区域
-                double uMax = 12.0 / 64.0, vMax = 16.0 / 32.0;
 
-                // ---- 构造正面（朝角色背面）与背面两片网格，加左右侧面 ----
+                // ===== Minecraft 标准披风 UV（64x32 贴图，查证自 NSSkinRender / skinview3d / CSS 3D skin viewer）=====
+                // 外层(玩家看到的外面): x=1..11, y=1..17       内层(贴身): x=11..21, y=1..17
+                // 左侧边: x=0..1, y=1..17                      右侧边: x=21..22, y=1..17
+                // 顶边: x=1..11, y=0..1                        底边: x=11..21, y=0..1
+                // 归一化到 [0,1]：U=x/64, V=y/32（WPF ImageBrush UV 原点左上、V 向下，与贴图像素一致）
+                double U(double x) => x / 64.0;
+                double V(double y) => y / 32.0;
+
+                // 外层/内层：各按 seg+1 行、2 列顶点，uvX 从面左到右、uvY 从顶到底
+                // zOuter(-2.4-thickness) 是远离身体的外面；zInner(-2.4) 贴身
                 var positions = new Point3DCollection();
                 var texCoords = new PointCollection();
                 var indices = new Int32Collection();
                 var phases = new System.Collections.Generic.List<double>();
 
-                // 每片网格按 seg+1 行、2 列顶点构建；uvV 从 0(顶) 到 1(底)
-                // faceZOffset：正面贴着角色(-2.4)，背面再往后(thickness)
-                void AddSheet(double zOffset, bool flipX)
+                void AddSheet(double zPos, double uLeft, double uRight, bool flipX)
                 {
                     int rowStart = positions.Count;
                     for (int s = 0; s <= segments; s++)
                     {
-                        double v = (double)s / segments;
-                        double y = top - ch * v;
-                        // 相位：顶 0 底 1（底部摆幅最大）
-                        double[][] row = flipX
-                            ? new[] { new double[] { cw / 2, y, zOffset }, new double[] { -cw / 2, y, zOffset } }
-                            : new[] { new double[] { -cw / 2, y, zOffset }, new double[] { cw / 2, y, zOffset } };
+                        double t = (double)s / segments;          // 0=顶 1=底
+                        double y = top - ch * t;
+                        double uvv = V(1 + 16 * t);              // 面 UV 的 V：y=1..17
+                        // 顶点 X 顺序：flipX 时左右互换，配合三角形绕序让法线朝外
+                        double[] xs = flipX ? new[] { cw / 2, -cw / 2 } : new[] { -cw / 2, cw / 2 };
+                        double[] us = flipX ? new[] { uRight, uLeft } : new[] { uLeft, uRight };
                         for (int c = 0; c < 2; c++)
                         {
-                            positions.Add(new Point3D(row[c][0], row[c][1], row[c][2]));
-                            // UV 映射到整图的左上披风区域
-                            texCoords.Add(new Point((flipX ? 1 - c : c) * uMax, v * vMax));
-                            phases.Add(v); // 顶点相位 = 高度比例
+                            positions.Add(new Point3D(xs[c], y, zPos));
+                            texCoords.Add(new Point(us[c], uvv));
+                            phases.Add(t); // 摆幅相位：顶部 0 底部 1
                         }
                     }
                     for (int s = 0; s < segments; s++)
@@ -481,21 +483,23 @@ namespace CraftGate.Controls
                     }
                 }
 
-                AddSheet(z, false);              // 正面
-                AddSheet(z - thickness, true);   // 背面（镜像UV）
+                // 外层(外面,朝-Z) 用 x=1..11；内层(贴身,朝+Z) 用 x=11..21
+                AddSheet(z - thickness, U(1), U(11), false);
+                AddSheet(z, U(11), U(21), true);
 
-                // 左右侧面：连接正反两片，形成长方体侧边（用边缘 UV）
-                void AddSide(double x, double u)
+                // 左右侧边：x=0..1 / x=21..22，连接两层
+                void AddSide(double xPos, double uLeft, double uRight)
                 {
                     int start = positions.Count;
                     for (int s = 0; s <= segments; s++)
                     {
-                        double v = (double)s / segments;
-                        double y = top - ch * v;
-                        positions.Add(new Point3D(x, y, z));
-                        texCoords.Add(new Point(u * uMax, v * vMax)); phases.Add(v);
-                        positions.Add(new Point3D(x, y, z - thickness));
-                        texCoords.Add(new Point(u * uMax + 0.01, v * vMax)); phases.Add(v);
+                        double t = (double)s / segments;
+                        double y = top - ch * t;
+                        double uvv = V(1 + 16 * t);
+                        positions.Add(new Point3D(xPos, y, z));
+                        texCoords.Add(new Point(uLeft, uvv)); phases.Add(t);
+                        positions.Add(new Point3D(xPos, y, z - thickness));
+                        texCoords.Add(new Point(uRight, uvv)); phases.Add(t);
                     }
                     for (int s = 0; s < segments; s++)
                     {
@@ -504,8 +508,8 @@ namespace CraftGate.Controls
                         indices.Add(b); indices.Add(c); indices.Add(d);
                     }
                 }
-                AddSide(-cw / 2, 0.0);
-                AddSide(cw / 2, 1.0);
+                AddSide(-cw / 2, U(0), U(1));
+                AddSide(cw / 2, U(21), U(22));
 
                 _capeMesh = new MeshGeometry3D
                 {
