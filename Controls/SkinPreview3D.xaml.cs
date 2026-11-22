@@ -389,85 +389,33 @@ namespace CraftGate.Controls
             }
         }
 
-        // 披风：刚体长方体盒子 10x16x1（skinview3d BoxGeometry(10,16,1)），以肩部为 pivot 前后摆。
-        // 【关键】不是逐顶点曲面波浪——顶点固定，靠整个模型绕肩部旋转实现游戏同款飘动。
+        // 披风：完全照抄皮肤 AddBox 的验证过方案——每个面单独 CroppedBitmap 裁剪 + 固定 UV。
+        // 之前用"整张图+UV坐标定位"的方式导致贴图错乱（整张图被挤到一面），改用逐面裁剪。
+        // 披风盒 10x16x1，6 面 UV Rect（64x32 贴图）：外层(背)1,1,10,16 / 内层(前)12,1,10,16 /
+        // 左0,1,1,16 / 右11,1,1,16 / 顶1,0,10,1 / 底12,0,10,1
         private void AddCape(Model3DGroup group, BitmapSource cape)
         {
             try
             {
-                const double cw = 10, ch = 16, depth = 1; // 宽10 高16 厚1（标准长方体）
-                // 身体中心 z=0 厚4 → 背面 z=-2。披风必须完全在身体之外才看得见：
-                // pivot 放 z=-2.6（肩后一点），盒中心 z=-3.1，盒范围 -2.6 ~ -3.6，彻底脱离身体。
+                const double cw = 10, ch = 16, depth = 1;
                 double pivotY = 8, pivotZ = -2.6;
                 double centerY = pivotY - ch / 2.0;   // 0
-                double centerZ = pivotZ - depth / 2.0; // -3.1（往外，不是往身体方向）
+                double centerZ = pivotZ - depth / 2.0; // -3.1
 
-                var brush = new ImageBrush(cape) { Stretch = Stretch.Fill };
-                RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
-                var material = new DiffuseMaterial(brush);
-
-                // Minecraft 标准披风 UV（64x32，实测 skinmc#172458 原图 + skinview3d 源码）：
-                // 左侧边 x=0..1；外层(花纹面) x=1..11；右侧边 x=11..12；内层(深色) x=12..22；
-                // 顶边 y=0..1，正面 y=1..17。
-                // 【关键】WPF 的 ImageBrush 用于 3D 时 UV 原点在【左上角】(与贴图像素一致)，V 不翻转！
-                // (three.js/skinview3d 原点在左下才需要 1.0-y/H)。之前翻转 → 采到 y31~15 透明区 → 白底。
-                // 依据：反编译游戏 26.3 PlayerCapeModel.class → texOffs(0,0)+addBox(-5,0,-1,10,16,1)，
-                // 标准 box UV 展开：外层(1,1)-(11,17)、内层(12,1)-(22,17)、侧边(0,1)-(1,17)。
-                double U(double x) => x / 64.0;
-                double V(double y) => y / 32.0;
-
-                var positions = new Point3DCollection();
-                var texCoords = new PointCollection();
-                var indices = new Int32Collection();
-
-                // 加一个矩形面：4 顶点 2 三角形。pts 按左上、右上、右下、左下顺序，uv 对应。
-                void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3,
-                             double u0, double v0, double u1, double v1)
+                // 用临时 group 收集 6 个面（AddBox 逐面裁剪方式），坐标以披风盒中心为准
+                var capeBox = new Model3DGroup();
+                double scale = cape.PixelWidth / 64.0; // 披风放大图（若 64 则 =1）
+                // 6 面的 UV Rect，顺序必须匹配 AddBox 的 faces：前(+Z)、后(-Z)、左、右、顶、底
+                var uvs = new[]
                 {
-                    int b = positions.Count;
-                    positions.Add(p0); positions.Add(p1); positions.Add(p2); positions.Add(p3);
-                    texCoords.Add(new Point(u0, v0)); texCoords.Add(new Point(u1, v0));
-                    texCoords.Add(new Point(u1, v1)); texCoords.Add(new Point(u0, v1));
-                    indices.Add(b); indices.Add(b + 1); indices.Add(b + 2);
-                    indices.Add(b); indices.Add(b + 2); indices.Add(b + 3);
-                }
-
-                double xL = -cw / 2, xR = cw / 2;
-                double yT = centerY + ch / 2, yB = centerY - ch / 2; // 8 / -8
-                double zFront = centerZ + depth / 2, zBack = centerZ - depth / 2; // -2.6(贴身侧) / -3.6(外侧)
-
-                // 外层(玩家看到的外面，朝 -Z)：x=1..11, y=1..17
-                AddQuad(new Point3D(xR, yT, zBack), new Point3D(xL, yT, zBack),
-                        new Point3D(xL, yB, zBack), new Point3D(xR, yB, zBack),
-                        U(1), V(1), U(11), V(17));
-                // 内层(贴身，朝 +Z)：x=12..22
-                AddQuad(new Point3D(xL, yT, zFront), new Point3D(xR, yT, zFront),
-                        new Point3D(xR, yB, zFront), new Point3D(xL, yB, zFront),
-                        U(12), V(1), U(22), V(17));
-                // 左侧边 x=0..1
-                AddQuad(new Point3D(xL, yT, zFront), new Point3D(xL, yT, zBack),
-                        new Point3D(xL, yB, zBack), new Point3D(xL, yB, zFront),
-                        U(0), V(1), U(1), V(17));
-                // 右侧边 x=11..12（外层右边那条）
-                AddQuad(new Point3D(xR, yT, zBack), new Point3D(xR, yT, zFront),
-                        new Point3D(xR, yB, zFront), new Point3D(xR, yB, zBack),
-                        U(11), V(1), U(12), V(17));
-                // 顶边 x=1..11,y=0..1
-                AddQuad(new Point3D(xL, yT, zBack), new Point3D(xR, yT, zBack),
-                        new Point3D(xR, yT, zFront), new Point3D(xL, yT, zFront),
-                        U(1), V(0), U(11), V(1));
-                // 底边 x=12..22,y=0..1
-                AddQuad(new Point3D(xR, yB, zBack), new Point3D(xL, yB, zBack),
-                        new Point3D(xL, yB, zFront), new Point3D(xR, yB, zFront),
-                        U(12), V(0), U(22), V(1));
-
-                var mesh = new MeshGeometry3D
-                {
-                    Positions = positions,
-                    TextureCoordinates = texCoords,
-                    TriangleIndices = indices
+                    new Rect(12, 1, 10, 16), // 前(+Z)=内层深色
+                    new Rect(1,  1, 10, 16), // 后(-Z)=外层花纹（玩家看到的外面）
+                    new Rect(0,  1,  1, 16), // 左
+                    new Rect(11, 1,  1, 16), // 右
+                    new Rect(1,  0, 10,  1), // 顶
+                    new Rect(12, 0, 10,  1)  // 底
                 };
-                mesh.Freeze(); // 刚体：顶点不再每帧改，冻结省开销
+                AddBox(capeBox, new Point3D(0, centerY, centerZ), cw, ch, depth, uvs, cape, scale);
 
                 // 绕肩部 pivot 的刚体旋转（平移到肩→绕X摆→平移回）
                 _capeSwing = new AxisAngleRotation3D(new Vector3D(1, 0, 0), CapeBaseAngle);
@@ -475,15 +423,9 @@ namespace CraftGate.Controls
                 swingTransform.Children.Add(new TranslateTransform3D(0, -pivotY, -pivotZ));
                 swingTransform.Children.Add(new RotateTransform3D(_capeSwing));
                 swingTransform.Children.Add(new TranslateTransform3D(0, pivotY, pivotZ));
+                capeBox.Transform = swingTransform;
 
-                var capeGeom = new GeometryModel3D(mesh, material)
-                {
-                    BackMaterial = material // 双面渲染：无论顶点绕序/朝向都能看见披风
-                };
-                var capeGroup = new Model3DGroup();
-                capeGroup.Children.Add(capeGeom);
-                capeGroup.Transform = swingTransform;
-                group.Children.Add(capeGroup);
+                group.Children.Add(capeBox);
             }
             catch (Exception ex)
             {
