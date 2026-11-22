@@ -1,0 +1,19 @@
+﻿<UserControl x:Class="CraftGate.Controls.MorphProgressButton"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="48"
+             Cursor="Hand">
+    <Grid x:Name="HitArea" Background="Transparent"
+          MouseLeftButtonUp="HitArea_MouseLeftButtonUp">
+        <Border x:Name="Track" CornerRadius="8" Background="{StaticResource AccentBrush}">
+            <Grid>
+                <Border x:Name="Fill" HorizontalAlignment="Left" Width="0"
+                        CornerRadius="4" Background="{StaticResource AccentBrush}"
+                        Visibility="Collapsed"/>
+                <TextBlock x:Name="Label"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           FontSize="15" FontWeight="SemiBold" Foreground="#FF0E2419"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

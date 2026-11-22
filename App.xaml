@@ -1,0 +1,26 @@
+﻿<Application x:Class="CraftGate.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- 全局抗锯齿：所有窗口边缘与文字平滑 -->
+            <Style TargetType="Window">
+                <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality"/>
+                <Setter Property="TextOptions.TextRenderingMode" Value="AntiAlias"/>
+                <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            </Style>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Material Design 调色板（深色主题 + 主题绿）：提供勾选框模板依赖的画刷。
+                     【重要】不要合并 MaterialDesign2.Defaults.xaml！它带的全局隐式样式会覆盖
+                     Expander 头部 ContentPresenter，导致版本弹窗横条只剩箭头方块、文字消失。
+                     MaterialDesignCheckBox 样式在下面 CheckBox.xaml 里，无需 Defaults 即可用。 -->
+                <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="Green" SecondaryColor="LightGreen"/>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.CheckBox.xaml"/>
+                <!-- 项目自身样式放最后，确保覆盖 -->
+                <ResourceDictionary Source="pack://application:,,,/CraftGate;component/Themes/GlobalStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

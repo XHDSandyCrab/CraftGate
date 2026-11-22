@@ -1,0 +1,405 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{26F30755-07EC-44E6-8854-85841268BFF7}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>CraftGate</RootNamespace>
+    <AssemblyName>CraftGate</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <WarningLevel>4</WarningLevel>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ControlzEx, Version=7.0.0.0, Culture=neutral, PublicKeyToken=69f1c32f803d307e, processorArchitecture=MSIL">
+      <HintPath>packages\ControlzEx.7.0.4\lib\net462\ControlzEx.dll</HintPath>
+    </Reference>
+    <Reference Include="FluentWpfCore">
+      <HintPath>packages\FluentWpfCore.1.0.6\lib\net47\FluentWpfCore.dll</HintPath>
+    </Reference>
+    <Reference Include="MaterialDesignThemes.Wpf">
+      <HintPath>packages\MaterialDesignThemes.5.2.1\lib\net462\MaterialDesignThemes.Wpf.dll</HintPath>
+    </Reference>
+    <Reference Include="HandyControl">
+      <HintPath>packages\HandyControl.3.5.1\lib\net472\HandyControl.dll</HintPath>
+    </Reference>
+    <Reference Include="MaterialDesignColors">
+      <HintPath>packages\MaterialDesignColors.5.2.1\lib\net462\MaterialDesignColors.dll</HintPath>
+    </Reference>
+    <Reference Include="fNbt, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\fNbt.2.1.0\lib\netstandard2.0\fNbt.dll</HintPath>
+    </Reference>
+    <Reference Include="CmlLib.Core">
+      <HintPath>packages\CmlLib.Core.4.1.0\lib\netstandard2.0\CmlLib.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="CmlLib.Core.Commons">
+      <HintPath>packages\CmlLib.Core.Commons.4.0.0\lib\netstandard2.0\CmlLib.Core.Commons.dll</HintPath>
+    </Reference>
+    <Reference Include="CmlLib.Core.Auth.Microsoft">
+      <HintPath>packages\CmlLib.Core.Auth.Microsoft.3.5.1\lib\netstandard2.0\CmlLib.Core.Auth.Microsoft.dll</HintPath>
+    </Reference>
+    <Reference Include="XboxAuthNet.Game">
+      <HintPath>packages\XboxAuthNet.Game.1.5.0\lib\netstandard2.0\XboxAuthNet.Game.dll</HintPath>
+    </Reference>
+    <Reference Include="XboxAuthNet">
+      <HintPath>packages\XboxAuthNet.3.1.0\lib\netstandard2.0\XboxAuthNet.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Identity.Client">
+      <HintPath>packages\Microsoft.Identity.Client.4.66.1\lib\netstandard2.0\Microsoft.Identity.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
+      <HintPath>packages\Microsoft.Extensions.Logging.Abstractions.8.0.0\lib\netstandard2.0\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.IdentityModel.Abstractions">
+      <HintPath>packages\Microsoft.IdentityModel.Abstractions.6.35.0\lib\netstandard2.0\Microsoft.IdentityModel.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Identity.Client.Desktop">
+      <HintPath>packages\Microsoft.Identity.Client.Desktop.4.66.1\lib\net462\Microsoft.Identity.Client.Desktop.dll</HintPath>
+    </Reference>
+    <Reference Include="ICSharpCode.SharpZipLib">
+      <HintPath>packages\SharpZipLib.1.4.2\lib\netstandard2.0\ICSharpCode.SharpZipLib.dll</HintPath>
+    </Reference>
+    <Reference Include="SevenZip">
+      <HintPath>packages\LZMA-SDK.19.0.0\lib\netstandard2.0\SevenZip.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=10.0.0.14, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Bcl.AsyncInterfaces.10.0.14\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Xaml.Behaviors, Version=1.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Xaml.Behaviors.Wpf.1.1.135\lib\net462\Microsoft.Xaml.Behaviors.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.IO.Pipelines, Version=10.0.0.14, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.IO.Pipelines.10.0.14\lib\net462\System.IO.Pipelines.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.6.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Encodings.Web, Version=10.0.0.14, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Text.Encodings.Web.10.0.14\lib\net462\System.Text.Encodings.Web.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Json, Version=10.0.0.14, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Text.Json.10.0.14\lib\net462\System.Text.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Threading.Tasks.Extensions.4.6.3\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ValueTuple" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Xml" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="Controls\MorphProgressButton.xaml.cs">
+      <DependentUpon>MorphProgressButton.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\RippleCard.xaml.cs">
+      <DependentUpon>RippleCard.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\SkinPreview3D.xaml.cs">
+      <DependentUpon>SkinPreview3D.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Core\Auth\MicrosoftAuth.cs" />
+    <Compile Include="Core\Game\AuthlibService.cs" />
+    <Compile Include="Core\Game\GameLauncher.cs" />
+    <Compile Include="Core\Game\Downloader.cs" />
+    <Compile Include="Core\Game\LoaderInstaller.cs" />
+    <Compile Include="Core\Game\LocalSkinServer.cs" />
+    <Compile Include="Core\Game\ModpackInstaller.cs" />
+    <Compile Include="Core\Game\VersionDownloader.cs" />
+    <Compile Include="Core\Game\VersionJsonHelper.cs" />
+    <Compile Include="Helpers\EqualityConverter.cs" />
+    <Compile Include="Helpers\InverseBoolConverter.cs" />
+    <Compile Include="Helpers\PercentageToWidthConverter.cs" />
+    <Compile Include="Helpers\ProgressToScaleConverter.cs" />
+    <Compile Include="Helpers\ScrollViewerHelper.cs" />
+    <Compile Include="Helpers\WindowChromeHelper.cs" />
+    <Compile Include="Helpers\StaggerPanel.cs" />
+    <Compile Include="Helpers\BorderTraceBehavior.cs" />
+    <Compile Include="Core\Game\SkinResourcePackService.cs" />
+
+    <Compile Include="Helpers\WindowMaterialHelper.cs" />
+    <Compile Include="Models\AccountModels.cs" />
+    <Compile Include="Models\DownloadModels.cs" />
+    <Compile Include="Models\LaunchOption.cs" />
+    <Compile Include="Models\LoaderModels.cs" />
+    <Compile Include="Models\ModrinthModels.cs" />
+    <Compile Include="Models\SettingsModel.cs" />
+    <Compile Include="Models\WizardModels.cs" />
+    <Compile Include="Models\VersionModels.cs" />
+    <Compile Include="Services\AccountService.cs" />
+    <Compile Include="Services\MicrosoftLoginService.cs" />
+    <Compile Include="Services\ConfigManager.cs" />
+    <Compile Include="Services\InstanceMetaService.cs" />
+    <Compile Include="Services\ConfigService.cs" />
+    <Compile Include="Services\DownloadManager.cs" />
+    <Compile Include="Services\HttpService.cs" />
+    <Compile Include="Services\JavaDetector.cs" />
+    <Compile Include="Services\InstalledModService.cs" />
+    <Compile Include="Services\ModCompatibilityService.cs" />
+    <Compile Include="Services\JavaManager.cs" />
+    <Compile Include="Services\LoaderApiService.cs" />
+    <Compile Include="Services\ModrinthService.cs" />
+    <Compile Include="Services\ModTranslationService.cs" />
+    <Compile Include="Services\PathManager.cs" />
+    <Compile Include="Services\SkinService.cs" />
+    <Compile Include="Services\SkinHeadService.cs" />
+    <Compile Include="Services\SkinLibraryService.cs" />
+    <Compile Include="Services\VersionService.cs" />
+    <Compile Include="Services\UpdateService.cs" />
+    <Compile Include="Services\VisibilityService.cs" />
+    <Compile Include="Services\WorldTemplateService.cs" />
+    <Compile Include="ViewModels\AccountViewModel.cs" />
+    <Compile Include="ViewModels\DownloadConfigViewModel.cs" />
+    <Compile Include="ViewModels\DownloadDetailViewModel.cs" />
+    <Compile Include="ViewModels\DownloadListViewModel.cs" />
+    <Compile Include="ViewModels\LaunchViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\RelayCommand.cs" />
+    <Compile Include="ViewModels\ResourceDownloadViewModel.cs" />
+    <Compile Include="ViewModels\SettingsViewModel.cs" />
+    <Compile Include="ViewModels\ViewModelBase.cs" />
+    <Compile Include="Views\AccountView.xaml.cs">
+      <DependentUpon>AccountView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\AccountEditView.xaml.cs">
+      <DependentUpon>AccountEditView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\DownloadCenterView.xaml.cs">
+      <DependentUpon>DownloadCenterView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\DownloadDetailView.xaml.cs">
+      <DependentUpon>DownloadDetailView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\DownloadDetailPopup.xaml.cs">
+      <DependentUpon>DownloadDetailPopup.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\DownloadListView.xaml.cs">
+      <DependentUpon>DownloadListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\LaunchView.xaml.cs">
+      <DependentUpon>LaunchView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ResourceDownloadView.xaml.cs">
+      <DependentUpon>ResourceDownloadView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\SettingsView.xaml.cs">
+      <DependentUpon>SettingsView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ToastNotification.xaml.cs">
+      <DependentUpon>ToastNotification.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\UpdateDialog.xaml.cs">
+      <DependentUpon>UpdateDialog.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Controls\MorphProgressButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\RippleCard.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\SkinPreview3D.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Page Include="Themes\GlobalStyles.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\AccountView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\AccountEditView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\DownloadCenterView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\DownloadDetailView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\DownloadDetailPopup.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\DownloadListView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\LaunchView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ResourceDownloadView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\SettingsView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\UpdateDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ToastNotification.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Views\App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets\loading.gif">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Resource Include="Assets\steve_head.png" />
+    <Resource Include="Assets\microsoft_logo.png" />
+    <Resource Include="Assets\Forge.png" />
+    <Resource Include="Assets\NeoForge.png" />
+    <Resource Include="Assets\Fabric.png" />
+    <Resource Include="Assets\Optifine.png" />
+    <Resource Include="Assets\Quilt.png" />
+    <Resource Include="Assets\CobbleStone.png" />
+    <Resource Include="Assets\GoldBlock.png" />
+    <Resource Include="Assets\CommandBlock.png" />
+    <Resource Include="Assets\Grass.png" />
+    <Resource Include="Assets\Light_Shadow.png" />
+    <Resource Include="Assets\Java_Light.png" />
+    <Resource Include="Assets\Xaero_Minimap.png" />
+    <Resource Include="Assets\Mod_Menu.png" />
+    <Resource Include="Assets\app_icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\skins\Alex.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\Herobrine.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\Notch.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\Steve.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\Dinnerbone.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\Dream.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\Grumm.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\jeb_.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\technoblade.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\skins\venom-invader.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\capes\classic_red.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\capes\blue.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\capes\green.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\capes\gold.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\capes\purple.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <None Include="FodyWeavers.xml" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- Fody + Costura：把依赖 DLL 嵌入单个 exe，实现单文件 + 秒开（PCL 同款方案） -->
+  <Import Project="packages\Costura.Fody.6.2.0\build\Costura.Fody.props" Condition="Exists('packages\Costura.Fody.6.2.0\build\Costura.Fody.props')" />
+  <Import Project="packages\Fody.6.9.3\build\Fody.targets" Condition="Exists('packages\Fody.6.9.3\build\Fody.targets')" />
+  <Import Project="packages\Costura.Fody.6.2.0\build\Costura.Fody.targets" Condition="Exists('packages\Costura.Fody.6.2.0\build\Costura.Fody.targets')" />
+  <Import Project="packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets" Condition="Exists('packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\System.ValueTuple.4.6.2\build\net471\System.ValueTuple.targets'))" />
+  </Target>
+</Project>

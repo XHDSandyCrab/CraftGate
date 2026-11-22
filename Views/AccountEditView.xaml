@@ -1,0 +1,462 @@
+﻿<UserControl x:Class="CraftGate.Views.AccountEditView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:CraftGate.Controls">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style x:Key="SoftButton" TargetType="Button">
+            <Setter Property="Background" Value="#2D3036"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="B" Property="Background" Value="#3A4048"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 皮肤卡片：无边框、悬浮上浮、选中放大(脚齐平)、上传占位项特殊样式 -->
+        <DataTemplate x:Key="SkinCardTemplate">
+            <Grid Height="138" Width="110" VerticalAlignment="Bottom" Margin="0,0,8,4">
+                <Button Command="{Binding DataContext.PickSkinCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                        CommandParameter="{Binding}" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                        VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="Transparent"><ContentPresenter/></Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="RenderTransformOrigin" Value="0.5,1"/>
+                                <!-- Transform 必须放在 Style.Setter 里，动画才能作用（本地值会导致不可变异常） -->
+                                <Setter Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="1" ScaleY="1"/></Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.28" Duration="0:0:0.22"/>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.28" Duration="0:0:0.22"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.16"/>
+                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.16"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <!-- 普通皮肤：无边框3D人像 + 名称；悬浮整体上浮 -->
+                        <StackPanel VerticalAlignment="Bottom">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="RenderTransform">
+                                        <Setter.Value><TranslateTransform Y="0"/></Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsUpload}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-10" Duration="0:0:0.15"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            <Trigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.15"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.ExitActions>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <controls:SkinPreview3D Skin="{Binding SkinImage}"
+                                                   Animate="{Binding IsSelected}"
+                                                   Width="100" Height="100"
+                                                   Loaded="SkinPreview_Loaded"/>
+                            <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextPrimaryBrush}"
+                                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,2,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsUpload}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                        <!-- 上传占位项：虚线框 + 上传图标 + 文字 -->
+                        <Border CornerRadius="10" Background="#1424272D" BorderBrush="{StaticResource AccentBrush}"
+                                BorderThickness="1.5" Width="100" Height="128" VerticalAlignment="Bottom"
+                                Visibility="{Binding IsUpload, Converter={StaticResource BoolToVis}}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE896;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="40" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="上传皮肤" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"
+                                           HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Button>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="40">
+        <Border Style="{StaticResource CardStyle}" Padding="32">
+            <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" ScrollChanged="PageScroll_ScrollChanged">
+                <StackPanel>
+                    <!-- 顶部：返回箭头 + 标题 -->
+                    <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Width="40" Height="40" Background="Transparent" BorderThickness="0"
+                                Cursor="Hand" Command="{Binding CloseEditCommand}" ToolTip="返回所有账户">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="20">
+                                        <TextBlock Text="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                                   FontSize="16" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#1AFFFFFF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="账户编辑" FontSize="28" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- 基本信息 子卡片 -->
+                    <Border Background="#1AFFFFFF" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="24">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="32"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 大头：无边框，直接加阴影 -->
+                            <Image Grid.Column="0" Source="{Binding EditHeadImage}" Width="120" Height="120"
+                                   Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Image.Effect>
+                                    <DropShadowEffect Color="#000000" Opacity="0.7" BlurRadius="18" ShadowDepth="6" Direction="270"/>
+                                </Image.Effect>
+                            </Image>
+
+                            <!-- 右侧：账户类型 + 名称 -->
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                <!-- 账户类型：两个按钮 -->
+                                <TextBlock Text="账户类型" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                    <!-- 正版按钮 -->
+                                    <Button Width="90" Height="34" Content="正版" FontSize="13" FontWeight="Bold" Cursor="Hand"
+                                            Command="{Binding RequestSwitchToMicrosoftCommand}" Margin="0,0,10,0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#2D3036"/>
+                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="8">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SliderIsMicrosoft}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter Property="Foreground" Value="#0E2419"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <!-- 离线按钮 -->
+                                    <Button Width="90" Height="34" Content="离线" FontSize="13" FontWeight="Bold" Cursor="Hand"
+                                            Command="{Binding RequestSwitchToOfflineCommand}">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="#2D3036"/>
+                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="8">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SliderIsMicrosoft}" Value="False">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter Property="Foreground" Value="#0E2419"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </StackPanel>
+
+                                <!-- 账户名称：可直接输入的 TextBox + 正版登录按钮 -->
+                                <TextBlock Text="账户名称" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- 绿色圆角框：外层Border给边框，内层TextBox无边框(避免系统蓝框) -->
+                                    <Border Grid.Column="0" Height="38" Margin="0,0,8,0"
+                                            Background="#0A000000" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1.5" CornerRadius="8">
+                                        <TextBox x:Name="NameBox"
+                                                 Text="{Binding EditName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                 MaxLength="16" FontSize="14"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                                 CaretBrush="{StaticResource AccentBrush}" Padding="12,8"
+                                                 VerticalContentAlignment="Center" IsReadOnly="False" IsEnabled="True"/>
+                                    </Border>
+                                    <!-- 正版登录：输入框右边绿色按钮，滑到正版才显示 -->
+                                    <Button Grid.Column="1" Content="登录" Width="64" Height="38" FontSize="13" FontWeight="Bold"
+                                            Command="{Binding LoginNowCommand}" Cursor="Hand"
+                                            Visibility="{Binding NeedMicrosoftLogin, Converter={StaticResource BoolToVis}}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="B" Background="{StaticResource AccentBrush}" CornerRadius="8">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="B" Property="Background" Value="#5AE89B"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- 选择皮肤 子卡片 -->
+                    <Border Background="#1AFFFFFF" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1"
+                            CornerRadius="12" Padding="24" Margin="0,20,0,0">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,14">
+                                <TextBlock Text="选择皮肤" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12"
+                                           Foreground="{StaticResource TextSecondaryBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{Binding BuiltinSkinCountText}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltinTab}" Value="False">
+                                                    <Setter Property="Text" Value="{Binding OnlineSkinCountText}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- 两栏切换：内置皮肤 / 皮肤网站 -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <Button Content="内置皮肤" Width="110" Height="34" FontSize="13" FontWeight="Bold" Cursor="Hand"
+                                        Command="{Binding ShowBuiltinTabCommand}" Margin="0,0,10,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#2D3036"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltinTab}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                    <Setter Property="Foreground" Value="#0E2419"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="皮肤网站" Width="110" Height="34" FontSize="13" FontWeight="Bold" Cursor="Hand"
+                                        Command="{Binding ShowOnlineTabCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#2D3036"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltinTab}" Value="False">
+                                                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                    <Setter Property="Foreground" Value="#0E2419"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- 内置皮肤：上传方块 + 内置皮肤（每页两排）+ 页码 -->
+                            <StackPanel Visibility="{Binding IsBuiltinTab, Converter={StaticResource BoolToVis}}">
+                                <ItemsControl ItemsSource="{Binding BuiltinPageNumbers}" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding DisplayNumber}" Width="32" Height="32" FontSize="13" FontWeight="Bold"
+                                                    Cursor="Hand" Margin="0,0,6,0"
+                                                    Command="{Binding DataContext.GoBuiltinPageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="B" Background="#2D3036" CornerRadius="8">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="B" Property="Background" Value="#3A4048"/>
+                                                            </Trigger>
+                                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                                <Setter TargetName="B" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding BuiltinPageSkins}" ItemTemplate="{StaticResource SkinCardTemplate}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 皮肤网站：云端皮肤（每页最多两排）+ 页码 -->
+                            <StackPanel Visibility="{Binding IsOnlineTab, Converter={StaticResource BoolToVis}}">
+                                <!-- 页码方块 -->
+                                <ItemsControl ItemsSource="{Binding OnlinePageNumbers}" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding DisplayNumber}" Width="32" Height="32" FontSize="13" FontWeight="Bold"
+                                                    Cursor="Hand" Margin="0,0,6,0"
+                                                    Command="{Binding DataContext.GoOnlinePageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="B" Background="#2D3036" CornerRadius="8">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="B" Property="Background" Value="#3A4048"/>
+                                                            </Trigger>
+                                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                                <Setter TargetName="B" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                            </DataTrigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding OnlinePageSkins}" ItemTemplate="{StaticResource SkinCardTemplate}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 皮肤命名弹窗（上传后输入名称）-->
+        <Grid Panel.ZIndex="100" Background="#B3000000"
+              Visibility="{Binding IsSkinNameModalOpen, Converter={StaticResource BoolToVis}}">
+            <Border Background="#1E2025" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1"
+                    CornerRadius="12" Padding="28" Width="380" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="皮肤已上传" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"
+                               HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <TextBlock Text="给这个皮肤起个名字吧" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                    <TextBox Text="{Binding NewSkinName, UpdateSourceTrigger=PropertyChanged}" MaxLength="16"
+                             Height="38" FontSize="14" Padding="12,8" VerticalContentAlignment="Center"
+                             Background="#0A000000" Foreground="{StaticResource TextPrimaryBrush}"
+                             CaretBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                             BorderBrush="{StaticResource AccentBrush}" Margin="0,0,0,20"
+                             KeyDown="SkinNameBox_KeyDown" x:Name="SkinNameBox"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="取消" Command="{Binding CancelSkinNameCommand}" Style="{StaticResource SoftButton}"
+                                Width="100" Height="36" Margin="0,0,10,0"/>
+                        <Button Content="确定" Command="{Binding ConfirmSkinNameCommand}" Style="{StaticResource SoftButton}"
+                                Width="100" Height="36" Background="{StaticResource AccentBrush}" Foreground="#0E2419"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

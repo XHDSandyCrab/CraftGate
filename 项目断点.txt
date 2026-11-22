@@ -1,0 +1,78 @@
+
+
+这是一个大的框架：
+ 阶段一：纯本地启动与下载闭环（当前核心目标）
+UI 基础框架：深色主题、圆角窗口、自定义标题栏、形变进度条动画、跑马灯日志。
+
+核心启动：离线账户创建、版本隔离、解压 Natives、拼装参数、拉起游戏。
+
+游戏下载：下载原版游戏、依赖库、Assets（带并发和断点续传）。
+
+资源下载：下载模组 (Mods)、光影包 (Shaderpacks)、数据包 (Datapacks)、整合包 (Modpacks) 到对应的本地文件夹。
+
+程序结构：
+CraftGate/
+│
+├── App.xaml / App.xaml.cs                # 程序入口
+├── MainWindow.xaml / MainWindow.xaml.cs  # 【主壳】：只负责无边框配置、左侧导航切换、承载下方各个 View
+│
+├── Themes/                               # 🎨 样式资源
+│   └── GlobalStyles.xaml                 # 全局颜色、圆角变量（4px）、各种卡片样式
+│
+├── Controls/                             # 🧩 自定义控件（针对备忘录里的特殊UI）
+│   ├── RippleCard.xaml / .cs             # 带“涟漪扩散动画”的卡片控件
+│   └── MorphProgressButton.xaml / .cs    # 启动页那个能“变形收缩成进度条”的按钮
+│
+├── Models/                               # 📦 数据模型（纯定义）
+│   ├── VersionModels.cs                  # Mojang API 映射
+│   ├── LoaderModels.cs                   # 加载器版本模型（Fabric/Forge等）
+│   ├── DownloadModels.cs                 # 包含 FileDownloadTask 和 DownloadCategoryGroup（用于一行三个分类）
+│   └── AccountModels.cs                  # 离线/正版账户信息（包含 AccessToken 等）
+│
+├── Services/                             # ⚙️ 基础服务（不依赖 UI）
+│   ├── HttpService.cs                    # 统一网络请求
+│   ├── JavaDetector.cs                   # 查找本地 Java
+│   ├── ConfigManager.cs                  # 读写本地 settings.json 配置
+│   └── LoaderApiService.cs               # 请求 Fabric/Forge/Quilt 版本的 API
+│
+├── Core/                                 # 🧠 核心业务逻辑
+│   ├── Game/
+│   │   ├── GameLauncher.cs               # 拼接参数、拉起游戏进程
+│   │   └── VersionDownloader.cs          # 【新增】多线程下载、智能跳过 Assets 资源、触发进度回调
+│   └── Auth/
+│       └── MicrosoftAuth.cs              # 【新增】微软 OAuth 2.0 正版登录流程
+│
+├── ViewModels/                           # 🎮 视图逻辑层（业务与UI的桥梁）
+│   ├── MainViewModel.cs                  # 控制左侧导航栏的切换
+│   ├── LaunchViewModel.cs                # 处理启动页的下拉框、形变动画触发、日志更新
+│   ├── DownloadListViewModel.cs          # 处理版本列表加载、点击跳转
+│   ├── DownloadConfigViewModel.cs        # 处理加载器勾选、高级模式折叠、获取加载器版本
+│   ├── DownloadDetailViewModel.cs        # 【核心】接收下载任务、更新分类进度、处理置顶和涟漪触发
+│   ├── AccountViewModel.cs               # 处理离线/微软登录、皮肤预览数据
+│   └── SettingsViewModel.cs              # 设置页逻辑
+│
+└── Views/                                # 🖥️ 界面视图层（纯 XAML，与 ViewModel 绑定）
+    ├── LaunchView.xaml / .xaml.cs        # 【启动主页】：右侧悬空卡片、皮肤框、变形按钮、跑马灯日志
+    ├── DownloadListView.xaml / .xaml.cs  # 下载版本列表
+    ├── DownloadConfigView.xaml / .xaml.cs# 下载配置页（主程序 + 加载器勾选）
+    ├── DownloadDetailView.xaml / .xaml.cs# 【核心】按分类、一行三个的下载网格
+    ├── AccountView.xaml / .xaml.cs       # 账户页（离线/微软独立卡片，下方大预览框）
+    └── SettingsView.xaml / .xaml.cs      # 设置页（移除原来的离线输入框）
+
+注释：	Views/ 文件夹下的界面文件（如 LaunchView、AccountView）：
+
+		选 “用户控件(WPF)”。
+
+		生成后只保留 .xaml 和 .xaml.cs，不要选“页”。
+
+		Themes/GlobalStyles.xaml：
+
+		选 “资源字典(WPF)”。
+
+		Controls/ 下的自定义控件（如 RippleCard、MorphProgressButton）：
+
+		选 “用户控件(WPF)”。
+
+		Models/、Services/、Core/、ViewModels/ 下的所有 .cs 文件：
+
+		选最上面的 “类”。

@@ -1,0 +1,397 @@
+﻿<UserControl x:Class="CraftGate.Views.LaunchView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:CraftGate.Controls"
+             xmlns:helpers="clr-namespace:CraftGate.Helpers">
+    <UserControl.Resources>
+        <!-- 分类胶囊标签（同下载页样式：选中绿底、未选中灰底、hover 绿描边） -->
+        <Style x:Key="TabCapsuleStyle" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bg" Background="#1AFFFFFF" CornerRadius="16" Padding="16,7"
+                                BorderBrush="Transparent" BorderThickness="2"
+                                helpers:BorderTraceBehavior.Enabled="True">
+                            <TextBlock x:Name="Txt" Text="{TemplateBinding Content}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#2DFFFFFF"/>
+                                <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="Txt" Property="Foreground" Value="#0E2419"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="40,40,20,40" Padding="22">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 标题栏：左侧【运行日志 / 已安装模组】切换，右侧复制按钮 -->
+                <Grid Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <RadioButton x:Name="TabLogs" Content="运行日志" GroupName="LeftPanelTab"
+                                     IsChecked="True" Checked="TabLogs_Checked" Style="{StaticResource TabCapsuleStyle}"/>
+                        <RadioButton x:Name="TabMods" Content="已安装模组" GroupName="LeftPanelTab"
+                                     Checked="TabMods_Checked" Style="{StaticResource TabCapsuleStyle}"/>
+                    </StackPanel>
+
+                    <Button x:Name="CopyLogBtn" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                            Background="Transparent" Cursor="Hand" 
+                            Foreground="{StaticResource TextSecondaryBrush}"
+                            Click="CopyLogBtn_Click" Content="复制日志" FontSize="12"
+                            Tag="&#xE8C8;" Padding="10,4" Style="{StaticResource SubtleHoverButtonStyle}"/>
+                </Grid>
+
+                <!-- 运行日志 -->
+                <ScrollViewer x:Name="LogPanel" Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Logs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Foreground="{StaticResource TextSecondaryBrush}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" Margin="0,3">
+                                    <TextBlock.Triggers>
+                                        <EventTrigger RoutedEvent="Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25"/>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </TextBlock.Triggers>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- 已安装模组列表（中文名优先） -->
+                <Grid x:Name="ModsPanel" Grid.Row="1" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock x:Name="ModsCountText" Text="正在扫描..." FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="ModsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#0AFFFFFF" CornerRadius="6" Padding="10,8" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding EnglishName}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding Loader}" FontSize="10" Foreground="{StaticResource AccentBrush}"/>
+                                                <TextBlock Text="{Binding Version}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Column="1" Style="{StaticResource CardStyle}" Width="380" Margin="20,40,40,40">
+            <Grid Margin="24">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <controls:SkinPreview3D Grid.Row="0" Skin="{Binding SkinImage}" Cape="{Binding CapeImage}"
+                                        AutoActivate="True" Animate="True" MinHeight="200"
+                                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+
+                <TextBlock Grid.Row="1" Text="{Binding PlayerName}" HorizontalAlignment="Center" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,14,0,4"/>
+
+                <TextBlock Grid.Row="2" Text="{Binding SelectedVersion}" HorizontalAlignment="Center" FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>
+
+                <TextBlock Grid.Row="3" Text="{Binding LatestStatusText}" ToolTip="{Binding LatestStatusText}" HorizontalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="320" Margin="0,0,0,16">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLaunching}" Value="False">
+                                    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <Grid Grid.Row="4" Height="48">
+                    <controls:MorphProgressButton Text="{Binding SelectedLaunchOption.ButtonText, FallbackValue='启动游戏'}" Command="{Binding LaunchCommand}" IsBusy="{Binding IsLaunching}" Progress="{Binding Progress}"/>
+
+                    <ToggleButton x:Name="DropDownBtn" IsChecked="{Binding IsVersionPopupOpen}" HorizontalAlignment="Right" Width="48" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Grid Background="Transparent">
+                                                <Border Width="1" Background="#33000000" HorizontalAlignment="Left" Margin="0,10,0,10"/>
+                                                <Path x:Name="Icon" Data="M 0,5 L 5,0 L 10,5" Stroke="#0E2419" StrokeThickness="2" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,2" RenderTransformOrigin="0.5,0.5">
+                                                    <Path.RenderTransform>
+                                                        <RotateTransform Angle="0"/>
+                                                    </Path.RenderTransform>
+                                                </Path>
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Trigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="Icon" Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)" To="180" Duration="0:0:0.2">
+                                                                    <DoubleAnimation.EasingFunction>
+                                                                        <CubicEase EasingMode="EaseOut"/>
+                                                                    </DoubleAnimation.EasingFunction>
+                                                                </DoubleAnimation>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.EnterActions>
+                                                    <Trigger.ExitActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation Storyboard.TargetName="Icon" Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)" To="0" Duration="0:0:0.2">
+                                                                    <DoubleAnimation.EasingFunction>
+                                                                        <CubicEase EasingMode="EaseOut"/>
+                                                                    </DoubleAnimation.EasingFunction>
+                                                                </DoubleAnimation>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </Trigger.ExitActions>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLaunching}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ToggleButton.Style>
+                    </ToggleButton>
+
+                    <Popup x:Name="VersionPopup" PlacementTarget="{Binding ElementName=DropDownBtn}" Placement="Top" HorizontalOffset="-96" VerticalOffset="-8" StaysOpen="False" AllowsTransparency="True" IsOpen="{Binding IsVersionPopupOpen, Mode=TwoWay}" PopupAnimation="None">
+                        <Border Background="#1E2025" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Width="240" RenderTransformOrigin="0.5,1">
+                            <Border.RenderTransform>
+                                <TranslateTransform Y="20"/>
+                            </Border.RenderTransform>
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="15" ShadowDepth="2" Opacity="0.5" Color="Black"/>
+                            </Border.Effect>
+                            <Border.Triggers>
+                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="20" To="0" Duration="0:0:0.25">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Border.Triggers>
+
+                            <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="6">
+                                <ItemsControl ItemsSource="{Binding VersionItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding DataContext.SelectVersionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand" Margin="0,0,0,4">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6" Height="60">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="44"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <Border Grid.Column="0" BorderBrush="#1AFFFFFF" BorderThickness="0,0,1,0" Background="#0AFFFFFF" CornerRadius="6,0,0,6">
+                                                                    <Image Source="{Binding IconImage}" Width="28" Height="28" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                </Border>
+                                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0">
+                                                                    <TextBlock x:Name="TxtVersion" Text="{Binding DisplayName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" LineHeight="20"/>
+                                                                    <TextBlock Text="{Binding Version}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" LineHeight="14"/>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Bg" Property="Background" Value="#1AFFFFFF"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Popup>
+                </Grid>
+
+                <!-- 进度条下方：左=进度百分比（每次+0.1），右=启动GIF（路径留空待填） -->
+                <Grid Grid.Row="5" Margin="0,10,0,0" Height="56">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLaunching}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Left" Margin="8,0,0,0">
+                        <TextBlock Text="启动进度" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="{Binding DisplayProgressText}" FontSize="26" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <!-- GIF 播放区：Source 绑定 LaunchGifPath，路径为空时显示占位提示 -->
+                    <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0">
+                        <Border x:Name="GifPlaceholder" Width="160" Height="44" CornerRadius="6"
+                                Background="#0AFFFFFF" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LaunchGifPath}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="加载动画" FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Image x:Name="LaunchGif" Width="160" Height="44" Stretch="Uniform"
+                               Source="{Binding LaunchGifPath}" StretchDirection="Both">
+                            <Image.Style>
+                                <Style TargetType="Image">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LaunchGifPath}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                    </Grid>
+                </Grid>
+
+                <Grid Grid.Row="6" x:Name="LaunchOptionsGrid" Margin="0,16,0,0" HorizontalAlignment="Center" Opacity="1">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLaunching}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.3"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+
+                    <ItemsControl ItemsSource="{Binding LaunchOptions}" HorizontalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="Dash" Width="16" Height="4" CornerRadius="2" Background="#3A3D44" Margin="4,0" Cursor="Hand">
+                                    <Border.InputBindings>
+                                        <MouseBinding MouseAction="LeftClick" Command="{Binding DataContext.SelectLaunchOptionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                                    </Border.InputBindings>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <!-- 用 Setter 直接换背景色，不用 ColorAnimation 动画冻结的 SolidColorBrush -->
+                                        <Setter TargetName="Dash" Property="Background" Value="#3DDC84"/>
+                                        <DataTrigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="Dash" Storyboard.TargetProperty="Width" To="24" Duration="0:0:0.2">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.EnterActions>
+                                        <DataTrigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="Dash" Storyboard.TargetProperty="Width" To="16" Duration="0:0:0.2">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </DataTrigger.ExitActions>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
