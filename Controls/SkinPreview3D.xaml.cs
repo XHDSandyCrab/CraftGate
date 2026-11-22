@@ -437,15 +437,14 @@ namespace CraftGate.Controls
                 double cw = 10, ch = 16, z = -2.4, top = 8; // 宽/高/背向偏移/顶边Y
                 double thickness = 0.5;                 // 披风厚度，形成侧面（立体感）
 
-                // 裁披风 UV 背面区域 (0,0)-(12,16)
-                double sx = cape.PixelWidth / 64.0, sy = cape.PixelHeight / 32.0;
-                int rw = Math.Min((int)(12 * sx), cape.PixelWidth);
-                int rh = Math.Min((int)(16 * sy), cape.PixelHeight);
-                var cropped = new CroppedBitmap(cape, new Int32Rect(0, 0, rw, rh));
-                cropped.Freeze();
-                var brush = new ImageBrush(cropped) { Stretch = Stretch.Fill };
+                // 【修复】不用 CroppedBitmap（多个 3D 模型间疑似被 WPF 共享缓存，导致所有披风显示成同一张）。
+                // 改用完整原图做 ImageBrush + UV 坐标定位到 (0,0)-(12/64,16/32) 区域，每张卡用自己的图。
+                var brush = new ImageBrush(cape) { Stretch = Stretch.Fill, Viewport = new Rect(0, 0, 1, 1),
+                                                  ViewportUnits = BrushMappingMode.RelativeToBoundingBox };
                 RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
                 var material = new DiffuseMaterial(brush);
+                // UV 范围：披风主图在 64x32 贴图的左上 12x16 区域
+                double uMax = 12.0 / 64.0, vMax = 16.0 / 32.0;
 
                 // ---- 构造正面（朝角色背面）与背面两片网格，加左右侧面 ----
                 var positions = new Point3DCollection();
@@ -469,7 +468,8 @@ namespace CraftGate.Controls
                         for (int c = 0; c < 2; c++)
                         {
                             positions.Add(new Point3D(row[c][0], row[c][1], row[c][2]));
-                            texCoords.Add(new Point(flipX ? 1 - c : c, v));
+                            // UV 映射到整图的左上披风区域
+                            texCoords.Add(new Point((flipX ? 1 - c : c) * uMax, v * vMax));
                             phases.Add(v); // 顶点相位 = 高度比例
                         }
                     }
@@ -493,9 +493,9 @@ namespace CraftGate.Controls
                         double v = (double)s / segments;
                         double y = top - ch * v;
                         positions.Add(new Point3D(x, y, z));
-                        texCoords.Add(new Point(u, v)); phases.Add(v);
+                        texCoords.Add(new Point(u * uMax, v * vMax)); phases.Add(v);
                         positions.Add(new Point3D(x, y, z - thickness));
-                        texCoords.Add(new Point(u + 0.02, v)); phases.Add(v);
+                        texCoords.Add(new Point(u * uMax + 0.01, v * vMax)); phases.Add(v);
                     }
                     for (int s = 0; s < segments; s++)
                     {

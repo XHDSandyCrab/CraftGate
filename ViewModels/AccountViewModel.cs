@@ -670,11 +670,26 @@ namespace CraftGate.ViewModels
                 // CapeLibrary 绑定 CollectionView，跨线程 Add 抛 NotSupportedException。
                 // 这里联网仍可后台跑，但拿到结果后统一切回 UI 线程再改集合。
                 var localCapes = SkinLibraryService.GetCapes();
-                var onlineCapes = await SkinLibraryService.ScanOnlineCapesAsync().ConfigureAwait(false);
+                // 内置披风立即显示
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                foreach (var c in localCapes) { CapeLibrary.Add(c); BuiltinCapes.Add(c); }
-                foreach (var c in onlineCapes) { CapeLibrary.Add(c); OnlineCapes.Add(c); }
+                    foreach (var c in localCapes) { CapeLibrary.Add(c); BuiltinCapes.Add(c); }
+                });
+                // 在线披风：下载一张显示一张（渐进），回调在后台线程，逐张切回 UI 添加
+                var modelSkinRef = SelectedSkin?.SkinImage ?? SkinImage;
+                await SkinLibraryService.ScanOnlineCapesPageAsync(1, c =>
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        c.ModelSkin = modelSkinRef;
+                        CapeLibrary.Add(c);
+                        OnlineCapes.Add(c);
+                        // 边下边更新分页，确保第一页尽快可见
+                        if (OnlineCapes.Count % CapePageSize == 1) UpdateCapePages();
+                    });
+                }).ConfigureAwait(false);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
                 _loadedCapeBatches = 1; // 首批48张=4个显示页
                 });
             }
@@ -696,17 +711,22 @@ namespace CraftGate.ViewModels
             try
             {
                 int nextBatch = _loadedCapeBatches + 1; // 第几批（对应 skinmc page=N）
-                var more = await SkinLibraryService.ScanOnlineCapesPageAsync(nextBatch).ConfigureAwait(false);
-                await Application.Current.Dispatcher.InvokeAsync(new System.Action(() =>
+                var modelSkinRef = SelectedSkin?.SkinImage ?? SkinImage;
+                int before = OnlineCapes.Count;
+                // 下载一张显示一张（渐进）
+                await SkinLibraryService.ScanOnlineCapesPageAsync(nextBatch, c =>
                 {
-                    int before = OnlineCapes.Count;
-                    foreach (var c in more)
+                    Application.Current.Dispatcher.Invoke(() =>
                     {
-                        // 按 TexturePath 去重，避免重复批次的缓存文件重复加入
-                        if (OnlineCapes.Any(x => x.TexturePath == c.TexturePath)) continue;
+                        // 按 TexturePath 去重
+                        if (OnlineCapes.Any(x => x.TexturePath == c.TexturePath)) return;
+                        c.ModelSkin = modelSkinRef;
                         OnlineCapes.Add(c);
                         CapeLibrary.Add(c);
-                    }
+                    });
+                }).ConfigureAwait(false);
+                await Application.Current.Dispatcher.InvokeAsync(new System.Action(() =>
+                {
                     if (OnlineCapes.Count > before) _loadedCapeBatches = nextBatch;
                     RefreshCapeModelSkin();
                     UpdateCapePages();

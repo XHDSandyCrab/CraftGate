@@ -238,8 +238,8 @@ namespace CraftGate.Services
         public static Task<List<CapeEntry>> ScanOnlineCapesAsync(int offset = 0)
             => ScanOnlineCapesPageAsync(offset / 48 + 1);
 
-        /// <summary>按 skinmc 页码加载披风（每页约 48 张）。</summary>
-        public static async Task<List<CapeEntry>> ScanOnlineCapesPageAsync(int page)
+        /// <summary>按 skinmc 页码加载披风（每页约 48 张）。onItem: 每加载一张回调一次（渐进显示用）。</summary>
+        public static async Task<List<CapeEntry>> ScanOnlineCapesPageAsync(int page, Action<CapeEntry> onItem = null)
         {
             var result = new List<CapeEntry>();
             string cacheDir = Path.Combine(PathManager.SkinsCacheDir, "library", "capes");
@@ -272,14 +272,16 @@ namespace CraftGate.Services
                             if (data.Length < 24 || !(data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G')) continue;
                             File.WriteAllBytes(file, data);
                         }
-                        result.Add(new CapeEntry
+                        var entry = new CapeEntry
                         {
                             Name = $"skinmc #{id}",
                             TexturePath = file,
                             Source = "skinmc",
                             PreviewImage = LoadCapePreview(file),
                             CapeImage = LoadCapeImage(file)
-                        });
+                        };
+                        result.Add(entry);
+                        onItem?.Invoke(entry); // 渐进显示：下载一张通知一张
                         added++;
                     }
                     catch { /* 单张失败跳过，不影响整批 */ }
