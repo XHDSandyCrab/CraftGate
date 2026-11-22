@@ -25,13 +25,17 @@ namespace CraftGate.Services
         public static string RepoDisplay => Repo;
         private static string ReleaseApi => $"https://api.github.com/repos/{Repo}/releases/latest";
 
-        /// <summary>当前程序版本（读 AssemblyVersion），形如 1.0.0.0 → 显示为 1.0.0。</summary>
+        /// <summary>当前程序版本（读 AssemblyVersion）。Revision 非 0 时保留第四段，形如 0.0.2.1 → "0.0.2.1"；否则显示三段。</summary>
         public static string CurrentVersion
         {
             get
             {
                 var v = Assembly.GetExecutingAssembly().GetName().Version;
-                return v == null ? "1.0.0" : $"{v.Major}.{v.Minor}.{v.Build}";
+                if (v == null) return "1.0.0";
+                // 【修复】Revision>0 时必须保留第四段，否则 0.0.2.1 被读成 0.0.2，永远比 Release tag 小 → 无限提示更新
+                return v.Revision > 0
+                    ? $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}"
+                    : $"{v.Major}.{v.Minor}.{v.Build}";
             }
         }
 
