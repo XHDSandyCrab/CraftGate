@@ -165,6 +165,7 @@
                         <!-- 3D 角色穿该披风；皮肤取当前角色皮肤，Cape 取本卡片披风 -->
                         <controls:SkinPreview3D Skin="{Binding ModelSkin}"
                                                 Cape="{Binding CapeImage}"
+                                                ShowBack="True"
                                                 Animate="{Binding IsSelected}"
                                                 AutoActivate="True"
                                                 Width="100" Height="100"/>
@@ -543,30 +544,6 @@
                                     </Button.Style>
                                 </Button>
                             </StackPanel>
-
-                            <!-- 披风网站搜索框（仅在线栏显示） -->
-                            <Grid Margin="0,0,0,14" Visibility="{Binding IsOnlineCapeTab, Converter={StaticResource BoolToVis}}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Text="{Binding CapeQuery, UpdateSourceTrigger=PropertyChanged}"
-                                         Height="34" FontSize="13" Padding="12,0" VerticalContentAlignment="Center"
-                                         Background="#0A000000" Foreground="{StaticResource TextPrimaryBrush}"
-                                         CaretBrush="{StaticResource AccentBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
-                                         KeyDown="CapeSearchBox_KeyDown" x:Name="CapeSearchBox"/>
-                                <Button Grid.Column="1" Content="搜索" Width="80" Height="34" FontSize="13" FontWeight="Bold"
-                                        Cursor="Hand" Command="{Binding SearchCapeCommand}" Margin="8,0,0,0"
-                                        Background="{StaticResource AccentBrush}" Foreground="#0E2419" BorderThickness="0">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" CornerRadius="8">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                            </Grid>
 
                             <!-- 内置披风：页码 + 当前页（每页两排） -->
                             <StackPanel Visibility="{Binding IsBuiltinCapeTab, Converter={StaticResource BoolToVis}}">

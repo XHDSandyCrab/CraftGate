@@ -59,6 +59,21 @@ namespace CraftGate.Controls
             set => SetValue(AutoActivateProperty, value);
         }
 
+        // 是否展示背面（披风卡片用：转成背朝相机，才能看到披在背后的披风）
+        public static readonly DependencyProperty ShowBackProperty =
+            DependencyProperty.Register(nameof(ShowBack), typeof(bool), typeof(SkinPreview3D),
+                new PropertyMetadata(false, (d, e) =>
+                {
+                    var c = (SkinPreview3D)d;
+                    c._modelBuilt = false;
+                    if (c.IsActive) c.BuildModel();
+                }));
+        public bool ShowBack
+        {
+            get => (bool)GetValue(ShowBackProperty);
+            set => SetValue(ShowBackProperty, value);
+        }
+
         private bool _modelBuilt;
 
         private void OnIsActiveChanged()
@@ -393,8 +408,10 @@ namespace CraftGate.Controls
 
                 var transform = new Transform3DGroup();
                 transform.Children.Add(new RotateTransform3D(_sway));
-                // 3/4 侧身视角：能看到侧面和头顶，产生立体感
-                transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), -32)));
+                // 【披风卡】背面朝向相机：转 180°-32°，这样披在背后(-Z)的披风才可见
+                // 普通皮肤卡：-32° 正面 3/4 视角
+                double yAngle = ShowBack ? 148 : -32;
+                transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), yAngle)));
                 transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), -10)));
 
                 ModelHost.Content = root;
