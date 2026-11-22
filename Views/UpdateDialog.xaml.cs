@@ -117,6 +117,7 @@ namespace CraftGate.Views
             _downloading = true;
             CloseBtn.Visibility = Visibility.Collapsed;
             LaterBtn.Visibility = Visibility.Collapsed;
+            UpdateBtn.Visibility = Visibility.Collapsed;   // 隐藏"立即更新"本体，避免底部透出残影
             DownloadPanel.Visibility = Visibility.Visible;
             DownloadDetailText.Text = "正在连接更新服务器...";
 
@@ -149,6 +150,7 @@ namespace CraftGate.Views
                     DownloadStatusText.Text = "";
                     CloseBtn.Visibility = _result != null && _result.IsMandatory ? Visibility.Collapsed : Visibility.Visible;
                     LaterBtn.Visibility = _result != null && _result.IsMandatory ? Visibility.Collapsed : Visibility.Visible;
+                    UpdateBtn.Visibility = Visibility.Visible;
                 });
                 if (Application.Current.MainWindow is MainWindow mw)
                     mw.ShowToastError("更新下载失败：" + ex.Message);

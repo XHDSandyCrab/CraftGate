@@ -86,7 +86,7 @@
                 </StackPanel>
 
                 <!-- 下载更新进度层（点"立即更新"后覆盖内容） -->
-                <Grid x:Name="DownloadPanel" Grid.Row="0" Grid.RowSpan="4" Visibility="Collapsed" Background="#23252B">
+                <Grid x:Name="DownloadPanel" Grid.Row="0" Grid.RowSpan="4" Visibility="Collapsed" Background="{DynamicResource CardBackgroundBrush}">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="340">
                         <TextBlock Text="正在下载更新..." FontSize="16" FontWeight="Bold"
                                    Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
