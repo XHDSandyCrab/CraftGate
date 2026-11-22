@@ -155,11 +155,40 @@
 
                 <controls:SkinPreview3D Grid.Row="0" Skin="{Binding SkinImage}" Cape="{Binding CapeImage}"
                                         AutoActivate="True" Animate="True" MinHeight="200"
-                                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <controls:SkinPreview3D.Style>
+                        <Style TargetType="controls:SkinPreview3D">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </controls:SkinPreview3D.Style>
+                </controls:SkinPreview3D>
 
-                <TextBlock Grid.Row="1" Text="{Binding PlayerName}" HorizontalAlignment="Center" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,14,0,4"/>
+                <TextBlock Grid.Row="1" Text="{Binding PlayerName}" HorizontalAlignment="Center" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,14,0,4">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
-                <TextBlock Grid.Row="2" Text="{Binding SelectedVersion}" HorizontalAlignment="Center" FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>
+                <TextBlock Grid.Row="2" Text="{Binding SelectedVersion}" HorizontalAlignment="Center" FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
                 <TextBlock Grid.Row="3" Text="{Binding LatestStatusText}" ToolTip="{Binding LatestStatusText}" HorizontalAlignment="Center" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="320" Margin="0,0,0,16">
                     <TextBlock.Style>
@@ -168,12 +197,25 @@
                                 <DataTrigger Binding="{Binding IsLaunching}" Value="False">
                                     <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
 
                 <Grid Grid.Row="4" Height="48">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
                     <controls:MorphProgressButton Text="{Binding SelectedLaunchOption.ButtonText, FallbackValue='启动游戏'}" Command="{Binding LaunchCommand}" IsBusy="{Binding IsLaunching}" Progress="{Binding Progress}"/>
 
                     <ToggleButton x:Name="DropDownBtn" IsChecked="{Binding IsVersionPopupOpen}" HorizontalAlignment="Right" Width="48" Background="Transparent" BorderThickness="0" Cursor="Hand">

@@ -133,14 +133,19 @@ namespace CraftGate.Views
         }
 
         /// <summary>取消自动隐藏计时（点击通知打开详情弹窗时调用，避免详情打开期间被从视觉树移除）。</summary>
+        private bool _wasAutoHiding; // 取消前计时器是否在跑（即通知是否本就该收起）
+
         public void CancelAutoHide()
         {
+            // 记录取消前的状态：进度未完成（100% 前）计时器没启动 → false，关闭详情后不收起
+            _wasAutoHiding = _hideTimer != null && _hideTimer.IsEnabled;
             _hideTimer.Stop();
         }
 
-        /// <summary>恢复显示后重新开始自动隐藏计时（详情弹窗关闭、通知回归时调用）。</summary>
+        /// <summary>详情弹窗关闭、通知回归时：仅当取消前本就该收起（进度已完成）才重启计时。</summary>
         public void RestartAutoHide(double delayMs = 2500)
         {
+            if (!_wasAutoHiding) return;
             _hideTimer.Interval = TimeSpan.FromMilliseconds(delayMs);
             _hideTimer.Start();
         }
