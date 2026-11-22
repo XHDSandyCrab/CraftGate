@@ -17,8 +17,14 @@ _nupkg/
 _backup_*/
 *.zip
 publish/
+publish_v2/
+release/
 Temp/
 *.tmp
+
+# ===== 本地最终发布文件（不入库，源码仓库保持干净）=====
+CraftGate_v0.0.2.1.exe
+CraftGate_*.exe
 
 # ===== 运行时生成的用户数据（含账号/皮肤缓存，绝不能入库）=====
 .minecraft/
