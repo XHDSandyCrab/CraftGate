@@ -161,7 +161,7 @@ namespace CraftGate.ViewModels
         private int _builtinPageIndex = 0;
         public int BuiltinPageIndex { get => _builtinPageIndex; set { if (Set(ref _builtinPageIndex, value)) UpdateBuiltinPage(); } }
         public int TotalBuiltinPages => BuiltinSkins.Count == 0 ? 1 : (int)Math.Ceiling(BuiltinSkins.Count / (double)BuiltinPageSize);
-        public string BuiltinSkinCountText => $"共 {BuiltinSkins.Count - 1} 款";
+        public string BuiltinSkinCountText => $"共 {Math.Max(0, BuiltinSkins.Count - 1)} 款";
         public ObservableCollection<PageItem> BuiltinPageNumbers { get; } = new ObservableCollection<PageItem>();
         public ICommand GoBuiltinPageCommand { get; }
         // 皮肤网站分页：每页两排（12个）
@@ -613,6 +613,10 @@ namespace CraftGate.ViewModels
                 var onlineCapes = await SkinLibraryService.ScanOnlineCapesAsync().ConfigureAwait(false);
                 foreach (var c in onlineCapes) CapeLibrary.Add(c);
             }
+            // 披风卡片用 3D 角色预览：给每张卡填充角色皮肤（当前皮肤 or 默认 Steve）
+            var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "skins", "Steve.png"));
+            foreach (var c in CapeLibrary) c.ModelSkin = modelSkin;
         }
 
         // 皮肤站搜索/刷新/加载更多：reset=true 从头搜并清空旧云端，false 追加下一页

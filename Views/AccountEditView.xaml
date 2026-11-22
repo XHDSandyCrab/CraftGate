@@ -129,6 +129,52 @@
                 </Button>
             </Grid>
         </DataTemplate>
+
+        <!-- 披风卡片：与皮肤卡片同款——3D 角色穿着该披风，选中放大；点选应用 -->
+        <DataTemplate x:Key="CapeCardTemplate">
+            <Grid Width="110" Height="138" VerticalAlignment="Bottom" Margin="0,0,8,4">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="RenderTransformOrigin" Value="0.5,1"/>
+                        <Setter Property="RenderTransform">
+                            <Setter.Value><ScaleTransform ScaleX="1" ScaleY="1"/></Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard><Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.28" Duration="0:0:0.22"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.28" Duration="0:0:0.22"/>
+                                    </Storyboard></BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard><Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.16"/>
+                                    </Storyboard></BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Button Command="{Binding DataContext.PickCapeCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                        CommandParameter="{Binding}" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                        VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                    <Button.Template><ControlTemplate TargetType="Button"><Border Background="Transparent"><ContentPresenter/></Border></ControlTemplate></Button.Template>
+                    <StackPanel VerticalAlignment="Bottom">
+                        <!-- 3D 角色穿该披风；皮肤取当前角色皮肤，Cape 取本卡片披风 -->
+                        <controls:SkinPreview3D Skin="{Binding ModelSkin}"
+                                                Cape="{Binding CapeImage}"
+                                                Animate="{Binding IsSelected}"
+                                                Width="100" Height="100"/>
+                        <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" MaxWidth="104"/>
+                        <TextBlock Text="{Binding Source}" FontSize="9" Foreground="{StaticResource TextMutedBrush}"
+                                   HorizontalAlignment="Center" Margin="0,1,0,0"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid Margin="40">
@@ -423,10 +469,23 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <ItemsControl ItemsSource="{Binding OnlinePageSkins}" ItemTemplate="{StaticResource SkinCardTemplate}">
+                                    <ItemsControl ItemsSource="{Binding OnlinePageSkins}" ItemTemplate="{StaticResource SkinCardTemplate}">
                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 </ItemsControl>
                             </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 选择披风 -->
+                    <Border Style="{StaticResource CardStyle}" Padding="20" Margin="0,0,0,20">
+                        <StackPanel>
+                            <TextBlock Text="选择披风" FontSize="16" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="选中的披风会显示在角色背后，并在游戏中生效（内置 + skinmc 在线图库）"
+                                       FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" TextWrapping="Wrap"/>
+                            <ItemsControl ItemsSource="{Binding CapeLibrary}" ItemTemplate="{StaticResource CapeCardTemplate}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
                 </StackPanel>

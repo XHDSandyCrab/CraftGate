@@ -154,7 +154,7 @@ namespace CraftGate.Core.Game
             catch { }
         }
 
-        private static async Task InjectLocalSkinAsync(string gameDir, string username, string localSkinPath, Action<string> logCallback)
+        private static async Task InjectLocalSkinAsync(string gameDir, string username, string localSkinPath, string localCapePath, Action<string> logCallback)
         {
             try
             {
@@ -166,6 +166,20 @@ namespace CraftGate.Core.Game
                 if (!string.IsNullOrEmpty(localSkinPath) && File.Exists(localSkinPath))
                 {
                     await SkinService.GenerateGameSkinAsync(localSkinPath, targetFile).ConfigureAwait(false);
+                }
+
+                // 披风：写到 CSL 配置的 cape 路径 LocalSkin/capes/{USERNAME}.png
+                string capesDir = Path.Combine(configDir, "LocalSkin", "capes");
+                string capeTarget = Path.Combine(capesDir, username + ".png");
+                if (!string.IsNullOrEmpty(localCapePath) && File.Exists(localCapePath))
+                {
+                    Directory.CreateDirectory(capesDir);
+                    File.Copy(localCapePath, capeTarget, true);
+                    logCallback?.Invoke("[披风] 披风已写入 CustomSkinLoader（低版本方案）");
+                }
+                else if (File.Exists(capeTarget))
+                {
+                    File.Delete(capeTarget); // 无披风时清掉旧的
                 }
 
                 string configFile = Path.Combine(configDir, "CustomSkinLoader.json");
@@ -367,30 +381,49 @@ namespace CraftGate.Core.Game
                 EnsureChineseLanguage(gameDirToUse);
                 logCallback($"[隔离] 当前账户存档目录: {gameDirToUse}");
 
-                bool hasCustomSkin = !string.IsNullOrEmpty(AccountService.CurrentAccount.SkinPath) && File.Exists(AccountService.CurrentAccount.SkinPath);
+                string skinPath = AccountService.CurrentAccount.SkinPath;
+                string capePath = AccountService.CurrentAccount.CapePath;
+                bool hasCustomSkin = !string.IsNullOrEmpty(skinPath) && File.Exists(skinPath);
+                bool hasCustomCape = !string.IsNullOrEmpty(capePath) && File.Exists(capePath);
 
-                if (hasCustomSkin)
+                if (hasCustomSkin || hasCustomCape)
                 {
                     if (SkinResourcePackService.UseResourcePack(version))
                     {
                         // 1.19.3+：用内置换肤资源包（MC 原生机制，跨版本，保留透明，不依赖 mod）
                         SkinResourcePackService.EnsurePack(gameDirToUse, version,
-                            AccountService.CurrentAccount.SkinPath, logCallback);
+                            skinPath, capePath, logCallback);
                         // 清理高版本可能残留的旧 CSL 配置——它带 cape/elytra 引用，
                         // 但我们的换肤没生成外衣贴图，会导致"外衣自动开启却无贴图/变黑"。
                         CleanupLegacySkinConfig(gameDirToUse);
                     }
                     else if (version.Contains("fabric") || version.Contains("forge"))
                     {
-                        // ≤1.19.2 + Mod 版：保持原有 CustomSkinLoader 方案
+                        // ≤1.19.2 + Mod 版：CustomSkinLoader 方案，皮肤+披风分别写
                         await EnsureCustomSkinLoaderAsync(gameDirToUse, version, logCallback).ConfigureAwait(false);
-                        await InjectLocalSkinAsync(gameDirToUse, playerName, AccountService.CurrentAccount.SkinPath, logCallback).ConfigureAwait(false);
+                        await InjectLocalSkinAsync(gameDirToUse, playerName, skinPath, capePath, logCallback).ConfigureAwait(false);
                     }
                     else
                     {
-                        // ≤1.19.2 + 原版：保持原有替换 JAR 贴图方案
+                        // ≤1.19.2 + 原版：替换 JAR 贴图；披风通过合并 UV 生成 widened 皮肤
                         string mergedSkinPath = Path.Combine(PathManager.SkinsCacheDir, "merged_vanilla_skin.png");
-                        await SkinService.GenerateGameSkinAsync(AccountService.CurrentAccount.SkinPath, mergedSkinPath).ConfigureAwait(false);
+                        if (hasCustomCape && hasCustomSkin)
+                        {
+                            // 低版本原版无披风机制：把披风 UV 合并进皮肤图的扩展区域
+                            string uvMerged = await SkinService.MergeCapeIntoSkinAsync(skinPath, capePath,
+                                Path.Combine(PathManager.SkinsCacheDir, "uv_merged_skin.png")).ConfigureAwait(false);
+                            if (!string.IsNullOrEmpty(uvMerged))
+                            {
+                                await SkinService.GenerateGameSkinAsync(uvMerged, mergedSkinPath).ConfigureAwait(false);
+                                logCallback?.Invoke("[披风] 披风 UV 已合并进皮肤（低版本原版方案）");
+                            }
+                            else
+                                await SkinService.GenerateGameSkinAsync(skinPath, mergedSkinPath).ConfigureAwait(false);
+                        }
+                        else if (hasCustomSkin)
+                            await SkinService.GenerateGameSkinAsync(skinPath, mergedSkinPath).ConfigureAwait(false);
+                        else
+                            File.Copy(capePath, mergedSkinPath, true); // 极端情况：只有披风没皮肤
                         PatchVanillaJar(jarPath, mergedSkinPath, logCallback);
                     }
                 }

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -135,6 +136,59 @@ namespace CraftGate.Services
             var mergedBitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, finalPixels, stride);
             mergedBitmap.Freeze();
             return mergedBitmap;
+        }
+
+        /// <summary>
+        /// 把独立披风 PNG(64x32) 合并进皮肤 UV 图，输出 64x128 的扩展皮肤：
+        /// 上半 y=0~63 放原皮肤，下半 y=64~95 放披风 UV，其余透明。
+        /// 供低版本原版/CustomSkinLoader 把披风和角色放在同一张 UV 图里使用。
+        /// 返回保存路径，失败返回 null。
+        /// </summary>
+        public static async Task<string> MergeCapeIntoSkinAsync(string skinPath, string capePath, string savePath)
+        {
+            try
+            {
+                if (!File.Exists(skinPath) || !File.Exists(capePath)) return null;
+                var skin = Load(skinPath);
+                var cape = Load(capePath);
+                if (skin == null || cape == null) return null;
+
+                const int W = 64, H = 128; // 扩展皮肤画布
+                var pixels = new byte[W * H * 4]; // 默认全透明(0)
+
+                // 贴皮肤：居中放上半（64x64 或 64x32 都从 y=0 开始）
+                int skinW = Math.Min(W, skin.PixelWidth), skinH = Math.Min(64, skin.PixelHeight);
+                int sStride = skin.PixelWidth * 4;
+                var sPx = new byte[sStride * skinH];
+                skin.CopyPixels(new Int32Rect(0, 0, skinW, skinH), sPx, sStride, 0);
+                for (int y = 0; y < skinH; y++)
+                    Buffer.BlockCopy(sPx, y * sStride, pixels, y * W * 4, skinW * 4);
+
+                // 贴披风：放到 y=64 起始区域（64x32）
+                int capeW = Math.Min(W, cape.PixelWidth), capeH = Math.Min(32, cape.PixelHeight);
+                int cStride = cape.PixelWidth * 4;
+                var cPx = new byte[cStride * capeH];
+                cape.CopyPixels(new Int32Rect(0, 0, capeW, capeH), cPx, cStride, 0);
+                for (int y = 0; y < capeH; y++)
+                    Buffer.BlockCopy(cPx, y * cStride, pixels, (64 + y) * W * 4, capeW * 4);
+
+                var merged = BitmapSource.Create(W, H, 96, 96, PixelFormats.Bgra32, null, pixels, W * 4);
+                merged.Freeze();
+
+                Directory.CreateDirectory(Path.GetDirectoryName(savePath));
+                using (var fs = new FileStream(savePath, FileMode.Create, FileAccess.Write))
+                {
+                    var enc = new PngBitmapEncoder();
+                    enc.Frames.Add(BitmapFrame.Create(merged));
+                    enc.Save(fs);
+                }
+                return await Task.FromResult(savePath).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("披风UV合并失败: " + ex.Message);
+                return null;
+            }
         }
 
         private static BitmapSource ForceSolidBackground(BitmapSource overlay)

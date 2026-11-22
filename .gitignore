@@ -41,3 +41,6 @@ crash.log
 Thumbs.db
 desktop.ini
 .DS_Store
+
+pkg222/
+release_pkg/

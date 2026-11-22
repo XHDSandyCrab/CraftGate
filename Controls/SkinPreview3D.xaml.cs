@@ -104,6 +104,7 @@ namespace CraftGate.Controls
             _rightArmRot.BeginAnimation(AxisAngleRotation3D.AngleProperty, null);
             _leftArmRot.Angle = 0;
             _rightArmRot.Angle = 0;
+            StopCapeWave();
         }
 
         // 披风纹理（64x32），穿在角色背后
@@ -129,6 +130,13 @@ namespace CraftGate.Controls
             new AxisAngleRotation3D(new Vector3D(0, 0, 1), 0);
         private readonly AxisAngleRotation3D _rightArmRot =
             new AxisAngleRotation3D(new Vector3D(0, 0, 1), 0);
+
+        // ===== 披风飘动：分段网格 + 逐帧更新顶点（仿游戏里前后飘动）=====
+        private MeshGeometry3D _capeMesh;          // 披风网格（顶点每帧更新）
+        private Point3D[] _capeBasePositions;      // 披风静止时的基准顶点
+        private double[] _capePhase;               // 每个顶点按高度分配的相位（越靠下摆幅越大）
+        private static int _capeAnimSubscriberCount; // CompositionTarget 订阅计数（多个预览控件共享一个循环）
+        private DateTime _capeAnimStart;
 
         public SkinPreview3D()
         {
@@ -156,6 +164,65 @@ namespace CraftGate.Controls
                 From = 7, To = -7, Duration = TimeSpan.FromSeconds(2.6),
                 AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = ease
             });
+            StartCapeWave();
+        }
+
+        // ===== 披风飘动动画实现 =====
+        private void StartCapeWave()
+        {
+            if (_capeMesh == null || _capeBasePositions == null) return;
+            if (_capeWaveActive) return;
+            _capeWaveActive = true;
+            _capeAnimStart = DateTime.Now;
+            _activeCapes.Add(this);
+            if (_capeAnimSubscriberCount == 0)
+                CompositionTarget.Rendering += OnCapeRendering;
+            _capeAnimSubscriberCount++;
+        }
+
+        private void StopCapeWave()
+        {
+            if (!_capeWaveActive) return;
+            _capeWaveActive = false;
+            _activeCapes.Remove(this);
+            _capeAnimSubscriberCount = Math.Max(0, _capeAnimSubscriberCount - 1);
+            if (_capeAnimSubscriberCount == 0)
+                CompositionTarget.Rendering -= OnCapeRendering;
+            // 恢复静止顶点
+            if (_capeMesh != null && _capeBasePositions != null)
+                _capeMesh.Positions = new Point3DCollection(_capeBasePositions);
+        }
+
+        private bool _capeWaveActive;
+
+        private static void OnCapeRendering(object sender, EventArgs e)
+        {
+            // 静态循环，遍历所有激活的预览控件更新披风顶点
+            foreach (var c in _activeCapes)
+                c.UpdateCapeWave();
+        }
+
+        private static readonly System.Collections.Generic.HashSet<SkinPreview3D> _activeCapes =
+            new System.Collections.Generic.HashSet<SkinPreview3D>();
+
+        private void UpdateCapeWave()
+        {
+            if (!_capeWaveActive || _capeMesh == null || _capeBasePositions == null || _capePhase == null) return;
+            double t = (DateTime.Now - _capeAnimStart).TotalSeconds;
+            int n = _capeBasePositions.Length;
+            var pts = new Point3D[n];
+            for (int i = 0; i < n; i++)
+            {
+                var basePt = _capeBasePositions[i];
+                // 越靠下摆幅越大：用 phase 数组（顶部 0 → 底部 1）
+                double amp = 0.55 * _capePhase[i];
+                // 前后飘动（Z 方向正弦）+ 轻微左右（X 方向）、上下的涟漪
+                double wave = Math.Sin(t * 2.6 + _capePhase[i] * 3.0) * amp;
+                double sway = Math.Sin(t * 1.7 + _capePhase[i] * 2.2) * amp * 0.35;
+                pts[i] = new Point3D(basePt.X + sway, basePt.Y, basePt.Z + wave);
+            }
+            // 直接替换 Positions 集合，触发 WPF 3D 重绘
+            _capeMesh.Positions = new Point3DCollection(pts);
         }
 
         private void BuildModel()
@@ -169,6 +236,8 @@ namespace CraftGate.Controls
             if (!IsInitialized) return;
 
             ModelHost.Content = null; // 先清空
+            StopCapeWave();           // 停掉旧披风动画，避免逐帧更新已废弃的 mesh
+            _capeMesh = null; _capeBasePositions = null; _capePhase = null;
 
             var bmp = Skin as BitmapSource;
             if (bmp == null) return;
@@ -330,6 +399,9 @@ namespace CraftGate.Controls
 
                 ModelHost.Content = root;
                 ModelHost.Transform = transform;
+                _modelBuilt = true;
+                // 若动画条件满足，重启披风飘动（指向刚构建的新 mesh）
+                if (Animate && VisibilityService.IsAppVisible) StartCapeWave();
             }
             catch (Exception ex)
             {
@@ -338,31 +410,97 @@ namespace CraftGate.Controls
             }
         }
 
-        // 披风：在角色背后（-Z 方向）渲染一块竖直平面，用披风 UV (0,0)-(12,16)
-        private static void AddCape(Model3DGroup group, BitmapSource cape)
+        // 披风：在角色背后（-Z 方向）渲染分段立体网格。
+        // 竖直分 8 段、带厚度，形成"长方体"轮廓；每段顶点按高度分配相位，供飘动动画逐帧更新。
+        private void AddCape(Model3DGroup group, BitmapSource cape)
         {
             try
             {
-                double cw = 10, ch = 16, z = -2.3, top = 8;
-                var mesh = new MeshGeometry3D
-                {
-                    Positions = new Point3DCollection(new[]
-                    {
-                        new Point3D(-cw/2, top, z), new Point3D(cw/2, top, z),
-                        new Point3D(cw/2, top - ch, z), new Point3D(-cw/2, top - ch, z)
-                    }),
-                    TextureCoordinates = new PointCollection { new Point(0,0), new Point(1,0), new Point(1,1), new Point(0,1) },
-                    TriangleIndices = new Int32Collection { 0,1,2, 0,2,3 }
-                };
-                // 裁披风 UV 正面区域 (0,0)-(12,16)，按实际纹理尺寸缩放
+                const int segments = 8;                 // 竖向分段数（越多越平滑）
+                double cw = 10, ch = 16, z = -2.4, top = 8; // 宽/高/背向偏移/顶边Y
+                double thickness = 0.5;                 // 披风厚度，形成侧面（立体感）
+
+                // 裁披风 UV 背面区域 (0,0)-(12,16)
                 double sx = cape.PixelWidth / 64.0, sy = cape.PixelHeight / 32.0;
-                int rx = 0, ry = 0, rw = (int)(12 * sx), rh = (int)(16 * sy);
-                rw = Math.Min(rw, cape.PixelWidth); rh = Math.Min(rh, cape.PixelHeight);
-                var cropped = new CroppedBitmap(cape, new Int32Rect(rx, ry, rw, rh));
+                int rw = Math.Min((int)(12 * sx), cape.PixelWidth);
+                int rh = Math.Min((int)(16 * sy), cape.PixelHeight);
+                var cropped = new CroppedBitmap(cape, new Int32Rect(0, 0, rw, rh));
                 cropped.Freeze();
                 var brush = new ImageBrush(cropped) { Stretch = Stretch.Fill };
                 RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
-                group.Children.Add(new GeometryModel3D(mesh, new DiffuseMaterial(brush)));
+                var material = new DiffuseMaterial(brush);
+
+                // ---- 构造正面（朝角色背面）与背面两片网格，加左右侧面 ----
+                var positions = new Point3DCollection();
+                var texCoords = new PointCollection();
+                var indices = new Int32Collection();
+                var phases = new System.Collections.Generic.List<double>();
+
+                // 每片网格按 seg+1 行、2 列顶点构建；uvV 从 0(顶) 到 1(底)
+                // faceZOffset：正面贴着角色(-2.4)，背面再往后(thickness)
+                void AddSheet(double zOffset, bool flipX)
+                {
+                    int rowStart = positions.Count;
+                    for (int s = 0; s <= segments; s++)
+                    {
+                        double v = (double)s / segments;
+                        double y = top - ch * v;
+                        // 相位：顶 0 底 1（底部摆幅最大）
+                        double[][] row = flipX
+                            ? new[] { new double[] { cw / 2, y, zOffset }, new double[] { -cw / 2, y, zOffset } }
+                            : new[] { new double[] { -cw / 2, y, zOffset }, new double[] { cw / 2, y, zOffset } };
+                        for (int c = 0; c < 2; c++)
+                        {
+                            positions.Add(new Point3D(row[c][0], row[c][1], row[c][2]));
+                            texCoords.Add(new Point(flipX ? 1 - c : c, v));
+                            phases.Add(v); // 顶点相位 = 高度比例
+                        }
+                    }
+                    for (int s = 0; s < segments; s++)
+                    {
+                        int a = rowStart + s * 2, b = a + 1, c = a + 2, d = a + 3;
+                        indices.Add(a); indices.Add(b); indices.Add(c);
+                        indices.Add(b); indices.Add(d); indices.Add(c);
+                    }
+                }
+
+                AddSheet(z, false);              // 正面
+                AddSheet(z - thickness, true);   // 背面（镜像UV）
+
+                // 左右侧面：连接正反两片，形成长方体侧边（用边缘 UV）
+                void AddSide(double x, double u)
+                {
+                    int start = positions.Count;
+                    for (int s = 0; s <= segments; s++)
+                    {
+                        double v = (double)s / segments;
+                        double y = top - ch * v;
+                        positions.Add(new Point3D(x, y, z));
+                        texCoords.Add(new Point(u, v)); phases.Add(v);
+                        positions.Add(new Point3D(x, y, z - thickness));
+                        texCoords.Add(new Point(u + 0.02, v)); phases.Add(v);
+                    }
+                    for (int s = 0; s < segments; s++)
+                    {
+                        int a = start + s * 2, b = a + 1, c = a + 2, d = a + 3;
+                        indices.Add(a); indices.Add(c); indices.Add(b);
+                        indices.Add(b); indices.Add(c); indices.Add(d);
+                    }
+                }
+                AddSide(-cw / 2, 0.0);
+                AddSide(cw / 2, 1.0);
+
+                _capeMesh = new MeshGeometry3D
+                {
+                    Positions = positions,
+                    TextureCoordinates = texCoords,
+                    TriangleIndices = indices
+                };
+                _capeBasePositions = new Point3D[positions.Count];
+                positions.CopyTo(_capeBasePositions, 0);
+                _capePhase = phases.ToArray();
+
+                group.Children.Add(new GeometryModel3D(_capeMesh, material));
             }
             catch (Exception ex)
             {

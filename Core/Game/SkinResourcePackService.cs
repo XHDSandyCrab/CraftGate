@@ -92,10 +92,14 @@ namespace CraftGate.Core.Game
             return IsAtLeast(ExtractNumber(version), "1.19.3");
         }
 
+        // 披风在资源包里的路径（1.19.3+）：所有玩家模型共用一张 cape.png
+        private const string CapeTexturePath = "assets/minecraft/textures/entity/player/cape.png";
+
         /// <summary>
         /// 生成换肤资源包并写入皮肤图片（保留原图透明通道）。
+        /// capePath 非空且文件存在时，一并写入披风贴图。
         /// </summary>
-        public static void EnsurePack(string gameDir, string version, string skinPath, Action<string> log)
+        public static void EnsurePack(string gameDir, string version, string skinPath, string capePath, Action<string> log)
         {
             if (string.IsNullOrEmpty(skinPath) || !File.Exists(skinPath))
             {
@@ -113,12 +117,25 @@ namespace CraftGate.Core.Game
                 File.WriteAllText(Path.Combine(rpDir, "pack.mcmeta"),
                     mcmeta, new UTF8Encoding(false));
 
-                // 皮肤原样复制到 4 个路径（保留 PNG 透明，不变黑）
+                // 皮肤原样复制到 18 个路径（保留 PNG 透明，不变黑）
                 foreach (string rel in SkinTexturePaths)
                 {
                     string dest = Path.Combine(rpDir, rel.Replace('/', Path.DirectorySeparatorChar));
                     Directory.CreateDirectory(Path.GetDirectoryName(dest));
                     File.Copy(skinPath, dest, true);
+                }
+
+                // 披风：写入 cape.png（若有）。没有披风时删除旧的，避免残留上一次的披风
+                string capeDest = Path.Combine(rpDir, CapeTexturePath.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(capeDest));
+                if (!string.IsNullOrEmpty(capePath) && File.Exists(capePath))
+                {
+                    File.Copy(capePath, capeDest, true);
+                    log?.Invoke("[披风] 披风贴图已写入换肤资源包");
+                }
+                else if (File.Exists(capeDest))
+                {
+                    File.Delete(capeDest);
                 }
 
                 log?.Invoke($"[皮肤] 换肤资源包已生成（{formatDesc}）");

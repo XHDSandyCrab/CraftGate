@@ -31,6 +31,10 @@ namespace CraftGate.Services
         public string Name { get; set; }
         public string TexturePath { get; set; }
         public ImageSource PreviewImage { get; set; }
+        // 原始披风图（64x32），供 3D 预览穿在角色身上
+        public ImageSource CapeImage { get; set; }
+        // 3D 预览用的角色皮肤（1280 放大图），由 ViewModel 填充（当前皮肤或默认 Steve）
+        public ImageSource ModelSkin { get; set; }
         public string Source { get; set; } = "本地";
         private bool _isSelected;
         public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
@@ -42,7 +46,13 @@ namespace CraftGate.Services
     /// </summary>
     public static class SkinLibraryService
     {
-        private static readonly HttpClient _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        private static readonly HttpClient _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        static SkinLibraryService()
+        {
+            // skinmc 等站点对无 UA 的请求会 403，补一个浏览器 UA
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36");
+        }
 
         private static string AssetsDir => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
 
@@ -218,7 +228,10 @@ namespace CraftGate.Services
             SkinImage = LoadScaledSkin(file)
         };
 
-        /// <summary>联网扫描披风站（失败回退空列表）。</summary>
+        /// <summary>
+        /// 联网扫描 skinmc.net 免费披风库（失败回退空列表）。
+        /// 列表页 HTML 里形如 /cape/{id} 的链接 → 原图 https://skinmc.net/capes/{id}/download（64x32 PNG）。
+        /// </summary>
         public static async Task<List<CapeEntry>> ScanOnlineCapesAsync(int offset = 0)
         {
             var result = new List<CapeEntry>();
@@ -226,35 +239,50 @@ namespace CraftGate.Services
             Directory.CreateDirectory(cacheDir);
             try
             {
-                string url = $"https://api.minecraftskins.com/api/capes?start={offset}&limit=24";
-                string json = await _http.GetStringAsync(url).ConfigureAwait(false);
-                var arr = JObject.Parse(json)["capes"] as JArray ?? JArray.Parse(json);
-                int added = 0;
-                foreach (var item in arr)
+                // skinmc 分页：?page=N；offset 换算成页码（每页约 24~48 张）
+                int page = offset / 24 + 1;
+                string listUrl = $"https://skinmc.net/capes/custom?page={page}";
+                string html = await _http.GetStringAsync(listUrl).ConfigureAwait(false);
+
+                // 抓 /cape/{id} 形式的披风详情链接，去重保序
+                var ids = new List<string>();
+                foreach (System.Text.RegularExpressions.Match m in
+                    System.Text.RegularExpressions.Regex.Matches(html, @"/cape/(\d+)"))
                 {
-                    if (added >= 48) break;
-                    string texture = item["texture"]?.ToString() ?? item["url"]?.ToString();
-                    string name = item["name"]?.ToString() ?? $"披风{added + 1}";
-                    if (string.IsNullOrEmpty(texture)) continue;
-                    string file = Path.Combine(cacheDir, $"online_{offset}_{added}_{Sanitize(name)}.png");
-                    if (!File.Exists(file))
+                    string id = m.Groups[1].Value;
+                    if (!ids.Contains(id)) ids.Add(id);
+                    if (ids.Count >= 48) break;
+                }
+
+                int added = 0;
+                foreach (string id in ids)
+                {
+                    string file = Path.Combine(cacheDir, $"skinmc_{id}.png");
+                    try
                     {
-                        byte[] data = await _http.GetByteArrayAsync(texture).ConfigureAwait(false);
-                        File.WriteAllBytes(file, data);
+                        if (!File.Exists(file))
+                        {
+                            byte[] data = await _http.GetByteArrayAsync($"https://skinmc.net/capes/{id}/download").ConfigureAwait(false);
+                            // 校验确实是 PNG 且 64x32，避免把错误页当图片存下来
+                            if (data.Length < 24 || !(data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G')) continue;
+                            File.WriteAllBytes(file, data);
+                        }
+                        result.Add(new CapeEntry
+                        {
+                            Name = $"skinmc #{id}",
+                            TexturePath = file,
+                            Source = "skinmc",
+                            PreviewImage = LoadCapePreview(file),
+                            CapeImage = LoadCapeImage(file)
+                        });
+                        added++;
                     }
-                    result.Add(new CapeEntry
-                    {
-                        Name = name,
-                        TexturePath = file,
-                        Source = "云端",
-                        PreviewImage = LoadCapePreview(file)
-                    });
-                    added++;
+                    catch { /* 单张失败跳过，不影响整批 */ }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("披风站扫描失败: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("skinmc 披风站扫描失败: " + ex.Message);
             }
             return result;
         }
@@ -272,7 +300,8 @@ namespace CraftGate.Services
                     {
                         Name = Path.GetFileNameWithoutExtension(f),
                         TexturePath = f,
-                        PreviewImage = LoadCapePreview(f)
+                        PreviewImage = LoadCapePreview(f),
+                        CapeImage = LoadCapeImage(f)
                     });
                 }
             }
@@ -303,6 +332,13 @@ namespace CraftGate.Services
                 crop.Freeze();
                 return SkinService.ScaleBitmapNearestNeighbor(crop, 6);
             }
+            catch { return null; }
+        }
+
+        /// <summary>加载原始披风图（64x32，不放大），供 3D 预览使用。</summary>
+        private static ImageSource LoadCapeImage(string path)
+        {
+            try { return LoadBitmap(path); }
             catch { return null; }
         }
 

@@ -501,30 +501,38 @@ namespace CraftGate.ViewModels
                     DownloadStatus = $"正在下载：{item.name} ({done + 1}/{manifest.Count})";
                     try
                     {
-                        // 光影包用 shader 类型查版本、不带加载器过滤；普通 mod 用 fabric
-                        // 【严格版本匹配】只按当前 MC 版本精确查询，绝不回退到"不带版本过滤"拿最新版——
-                        // 否则 Sodium 0.9.3+mc26.3 会被装进 20w14infinite 导致游戏启动崩溃。
-                        var vers = item.shader
-                            ? await ModrinthService.GetVersionsAsync(item.projectId, VersionId, null)
-                            : await ModrinthService.GetVersionsAsync(item.projectId, VersionId, "fabric");
-                        // 二次校验：GameVersions 必须明确包含当前版本（防止 API 参数被忽略）
-                        var pick = vers.FirstOrDefault(v => v.GameVersions != null && v.GameVersions.Contains(VersionId));
-                        if (pick == null)
+                        ModrinthVersion pick = null;
+                        if (item.shader)
                         {
-                            // 精确查询无果时，拉全量版本再本地严格筛选一次（兼容 Modrinth 对快照版本 filter 的怪异行为）
-                            var all = await ModrinthService.GetVersionsAsync(item.projectId, null, null);
-                            pick = all.FirstOrDefault(v => v.GameVersions != null && v.GameVersions.Contains(VersionId));
+                            // 【光影包】shaderpack 基本跨版本通用，且 Modrinth 上常不标注精确 MC 版本。
+                            // 不能像 mod 那样按 VersionId 精确匹配，否则 Complementary 一律被跳过 → shaderpacks 空。
+                            // 策略：取最新版本即可（第一个即最新）。
+                            var shaderVers = await ModrinthService.GetVersionsAsync(item.projectId, null, null);
+                            pick = shaderVers.FirstOrDefault();
                         }
-                        if (pick == null)
+                        else
                         {
-                            // 找不到兼容版本：跳过，绝不拿最新版硬装
-                            skippedIncompatible.Add(item.name);
+                            // 普通 mod：【严格版本匹配】只按当前 MC 版本精确查询，绝不回退拿最新版——
+                            // 否则 Sodium 0.9.3+mc26.3 会被装进 20w14infinite 导致游戏启动崩溃。
+                            var vers = await ModrinthService.GetVersionsAsync(item.projectId, VersionId, "fabric");
+                            pick = vers.FirstOrDefault(v => v.GameVersions != null && v.GameVersions.Contains(VersionId));
+                            if (pick == null)
+                            {
+                                var all = await ModrinthService.GetVersionsAsync(item.projectId, null, null);
+                                pick = all.FirstOrDefault(v => v.GameVersions != null && v.GameVersions.Contains(VersionId));
+                            }
+                            if (pick == null) skippedIncompatible.Add(item.name);
                         }
-                        else if (pick.Files != null)
+                        if (pick != null && pick.Files != null)
                         {
                             var file = pick.Files.FirstOrDefault(f => f.Primary) ?? pick.Files.FirstOrDefault();
                             if (file != null)
+                            {
                                 await ModrinthService.DownloadFileAsync(file.Url, item.dir, file.Filename);
+                                if (item.shader)
+                                    Application.Current.Dispatcher.Invoke(() =>
+                                        DownloadStatus = $"光影包已安装：{file.Filename}");
+                            }
                         }
                     }
                     catch { }
