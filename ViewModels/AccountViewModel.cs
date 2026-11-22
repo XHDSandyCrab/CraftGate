@@ -196,6 +196,10 @@ namespace CraftGate.ViewModels
         public ObservableCollection<CapeEntry> OnlineCapes { get; } = new ObservableCollection<CapeEntry>();
         public ICommand ShowBuiltinCapeTabCommand { get; }
         public ICommand ShowOnlineCapeTabCommand { get; }
+        // 披风网站搜索
+        private string _capeQuery = "";
+        public string CapeQuery { get => _capeQuery; set => Set(ref _capeQuery, value); }
+        public ICommand SearchCapeCommand { get; }
         // 皮肤站搜索
         private string _skinQuery = "";
         public string SkinQuery { get => _skinQuery; set => Set(ref _skinQuery, value); }
@@ -309,6 +313,7 @@ namespace CraftGate.ViewModels
             ShowOnlineTabCommand = new RelayCommand(_ => IsBuiltinTab = false);
             ShowBuiltinCapeTabCommand = new RelayCommand(_ => IsBuiltinCapeTab = true);
             ShowOnlineCapeTabCommand = new RelayCommand(_ => IsBuiltinCapeTab = false);
+            SearchCapeCommand = new RelayCommand(async _ => await SearchCapesAsync());
             ConfirmSkinNameCommand = new RelayCommand(_ => ConfirmSkinName());
             CancelSkinNameCommand = new RelayCommand(_ => { IsSkinNameModalOpen = false; _pendingSkinPath = null; });
             GoBuiltinPageCommand = new RelayCommand(p =>
@@ -644,6 +649,20 @@ namespace CraftGate.ViewModels
                 foreach (var c in CapeLibrary) c.ModelSkin = modelSkin;
                 foreach (var c in BuiltinCapes) c.ModelSkin = modelSkin;
                 foreach (var c in OnlineCapes) c.ModelSkin = modelSkin;
+            });
+        }
+
+        // 披风网站搜索：按关键词拉 skinmc 披风，切到在线栏显示
+        private async Task SearchCapesAsync()
+        {
+            IsBuiltinCapeTab = false;
+            var modelSkinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "skins", "Steve.png");
+            var found = await SkinLibraryService.SearchCapesAsync(CapeQuery).ConfigureAwait(false);
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(modelSkinPath);
+                OnlineCapes.Clear();
+                foreach (var c in found) { c.ModelSkin = modelSkin; OnlineCapes.Add(c); }
             });
         }
 

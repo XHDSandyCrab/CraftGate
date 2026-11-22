@@ -47,6 +47,16 @@ namespace CraftGate.Views
             }
         }
 
+        private void CapeSearchBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter && DataContext is AccountViewModel vm)
+            {
+                if (vm.SearchCapeCommand.CanExecute(null))
+                    vm.SearchCapeCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
+
         private void SkinPreview_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is SkinPreview3D p && !_previews.Contains(p))

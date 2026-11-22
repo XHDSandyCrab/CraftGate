@@ -287,6 +287,55 @@ namespace CraftGate.Services
             return result;
         }
 
+        /// <summary>按关键词搜索 skinmc 披风（搜索页 ?search=关键词&amp;tab=capes）。</summary>
+        public static async Task<List<CapeEntry>> SearchCapesAsync(string keyword)
+        {
+            var result = new List<CapeEntry>();
+            if (string.IsNullOrWhiteSpace(keyword)) keyword = "cape";
+            string cacheDir = Path.Combine(PathManager.SkinsCacheDir, "library", "capes");
+            Directory.CreateDirectory(cacheDir);
+            try
+            {
+                string url = $"https://skinmc.net/s?search={Uri.EscapeDataString(keyword)}&tab=capes";
+                string html = await _http.GetStringAsync(url).ConfigureAwait(false);
+                var ids = new System.Collections.Generic.List<string>();
+                foreach (System.Text.RegularExpressions.Match m in
+                    System.Text.RegularExpressions.Regex.Matches(html, @"/cape/(\d+)"))
+                {
+                    string id = m.Groups[1].Value;
+                    if (!ids.Contains(id)) ids.Add(id);
+                    if (ids.Count >= 48) break;
+                }
+                foreach (string id in ids)
+                {
+                    string file = Path.Combine(cacheDir, $"skinmc_{id}.png");
+                    try
+                    {
+                        if (!File.Exists(file))
+                        {
+                            byte[] data = await _http.GetByteArrayAsync($"https://skinmc.net/capes/{id}/download").ConfigureAwait(false);
+                            if (data.Length < 24 || !(data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G')) continue;
+                            File.WriteAllBytes(file, data);
+                        }
+                        result.Add(new CapeEntry
+                        {
+                            Name = $"skinmc #{id}",
+                            TexturePath = file,
+                            Source = "skinmc",
+                            PreviewImage = LoadCapePreview(file),
+                            CapeImage = LoadCapeImage(file)
+                        });
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("skinmc 披风搜索失败: " + ex.Message);
+            }
+            return result;
+        }
+
         /// <summary>获取披风列表（内置）。</summary>
         public static List<CapeEntry> GetCapes()
         {
