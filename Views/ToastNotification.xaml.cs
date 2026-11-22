@@ -72,6 +72,13 @@ namespace CraftGate.Views
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
             };
             ProgressFill.BeginAnimation(WidthProperty, anim);
+
+            // 【修复】进度到 100% 后自动收起，避免通知一直挂着不缩回去
+            if (percent >= 99.9)
+            {
+                _hideTimer.Interval = TimeSpan.FromMilliseconds(1500);
+                _hideTimer.Start();
+            }
         }
 
         public void ShowSuccess(string message)

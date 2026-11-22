@@ -955,13 +955,22 @@ namespace CraftGate.ViewModels
 
         private async Task LoadSkinAsync()
         {
-            var img = await SkinService.GetSkinAsync(PlayerName, _currentSkinPath).ConfigureAwait(false);
-            // 图像在后台线程生成，必须切回 UI 线程赋值，否则 3D 预览跨线程崩溃
-            await Application.Current.Dispatcher.InvokeAsync(new System.Action(() =>
+            // 显示"正在加载"提示（切回 UI 线程设状态）
+            await Application.Current.Dispatcher.InvokeAsync(new System.Action(() => IsLoadingSkinModal = true));
+            try
             {
-                SkinImage = null;
-                SkinImage = img;
-            }));
+                var img = await SkinService.GetSkinAsync(PlayerName, _currentSkinPath).ConfigureAwait(false);
+                // 图像在后台线程生成，必须切回 UI 线程赋值，否则 3D 预览跨线程崩溃
+                await Application.Current.Dispatcher.InvokeAsync(new System.Action(() =>
+                {
+                    SkinImage = null;
+                    SkinImage = img;
+                }));
+            }
+            finally
+            {
+                await Application.Current.Dispatcher.InvokeAsync(new System.Action(() => IsLoadingSkinModal = false));
+            }
         }
 
         private void SaveAccount()

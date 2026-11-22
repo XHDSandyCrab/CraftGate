@@ -296,6 +296,21 @@
                                         AutoActivate="True" Animate="True" HorizontalAlignment="Center"
                                         Width="380" Height="520" MinHeight="360"/>
 
+                <!-- 皮肤加载中提示 -->
+                <TextBlock Grid.Row="1" Text="正在加载皮肤..." FontSize="13" Foreground="{StaticResource AccentBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsLoadingSkinModal}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
                 <!-- 玩家名称（只显示，不编辑）-->
                 <TextBlock Grid.Row="2" Text="{Binding PlayerName}" FontSize="16" FontWeight="Bold"
                            Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,8,0,0"/>

@@ -546,12 +546,17 @@ namespace CraftGate.Core.Game
             var parts = new List<string>();
             for (int i = 0; i < arr.Count; i++)
             {
-                string s = EvaluateArgumentToken(arr[i], placeholders);
-                if (s == null) continue;
-                if (s == "-cp" || s == "-classpath") { i++; continue; }
-                if (s.StartsWith("-Djava.library.path") || s.StartsWith("-Djava.io.tmpdir") || s.StartsWith("-Xmx") || s.StartsWith("-Xms")) continue;
-                if (s.Contains(" ") && !s.StartsWith("\"")) s = "\"" + s + "\"";
-                parts.Add(s);
+                // 一个 token 可能展开成多个参数（规则 value 是数组时），必须逐个处理
+                var tokens = EvaluateArgumentTokens(arr[i], placeholders);
+                if (tokens.Count == 0) continue;
+                // -cp / -classpath 后面的 ${classpath} 是单独一个参数，跳过这对
+                if (tokens[0] == "-cp" || tokens[0] == "-classpath") { i++; continue; }
+                foreach (string raw in tokens)
+                {
+                    if (raw.StartsWith("-Djava.library.path") || raw.StartsWith("-Djava.io.tmpdir")
+                        || raw.StartsWith("-Xmx") || raw.StartsWith("-Xms")) continue;
+                    parts.Add(QuoteArgument(raw));
+                }
             }
             return string.Join(" ", parts);
         }
@@ -564,12 +569,8 @@ namespace CraftGate.Core.Game
                 var parts = new List<string>();
                 foreach (var token in arr)
                 {
-                    string s = EvaluateArgumentToken(token, placeholders);
-                    if (s != null)
-                    {
-                        if (s.Contains(" ") && !s.StartsWith("\"")) s = "\"" + s + "\"";
-                        parts.Add(s);
-                    }
+                    foreach (string raw in EvaluateArgumentTokens(token, placeholders))
+                        parts.Add(QuoteArgument(raw));
                 }
                 return string.Join(" ", parts);
             }
@@ -577,24 +578,36 @@ namespace CraftGate.Core.Game
             return null;
         }
 
-        private static string EvaluateArgumentToken(JToken token, Dictionary<string, string> placeholders)
+        /// <summary>把一个 JSON 参数 token 展开成多个独立参数（规则 value 为数组时逐个返回，绝不 Join）。</summary>
+        private static List<string> EvaluateArgumentTokens(JToken token, Dictionary<string, string> placeholders)
         {
-            if (token.Type == JTokenType.String) return ReplacePlaceholders(token.ToString(), placeholders);
+            var result = new List<string>();
+            if (token == null) return result;
+            if (token.Type == JTokenType.String)
+            {
+                result.Add(ReplacePlaceholders(token.ToString(), placeholders));
+                return result;
+            }
             if (token.Type == JTokenType.Object)
             {
                 JToken rules = token["rules"];
-                if (rules != null && !CheckRulesAllowed(rules)) return null;
+                if (rules != null && !CheckRulesAllowed(rules)) return result;
                 JToken value = token["value"];
-                if (value == null) return null;
-                if (value.Type == JTokenType.String) return ReplacePlaceholders(value.ToString(), placeholders);
-                if (value.Type == JTokenType.Array)
-                {
-                    var items = new List<string>();
-                    foreach (var v in value) items.Add(ReplacePlaceholders(v.ToString(), placeholders));
-                    return string.Join(" ", items);
-                }
+                if (value == null) return result;
+                if (value.Type == JTokenType.String) result.Add(ReplacePlaceholders(value.ToString(), placeholders));
+                else if (value.Type == JTokenType.Array)
+                    foreach (var v in value) result.Add(ReplacePlaceholders(v.ToString(), placeholders));
             }
-            return null;
+            return result;
+        }
+
+        /// <summary>对一个已经确定的"单个参数"加引号：含空格才加，且保留参数边界。</summary>
+        private static string QuoteArgument(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            if (s.StartsWith("\"") && s.EndsWith("\"")) return s; // 已加引号
+            if (s.IndexOf(' ') >= 0) return "\"" + s.Replace("\"", "\\\"") + "\"";
+            return s;
         }
 
         private static string ReplacePlaceholders(string s, Dictionary<string, string> map)
@@ -602,8 +615,8 @@ namespace CraftGate.Core.Game
             if (string.IsNullOrEmpty(s)) return s;
             foreach (var kv in map)
             {
-                string value = QuoteIfNeeded(kv.Value ?? "");
-                s = s.Replace("${" + kv.Key + "}", value);
+                // 占位符值不再内层加引号，统一由 QuoteArgument 在参数级别加，避免 -Dkey="a b" 式错误
+                s = s.Replace("${" + kv.Key + "}", kv.Value ?? "");
             }
             return s;
         }
@@ -630,13 +643,20 @@ namespace CraftGate.Core.Game
         private static bool CheckRulesAllowed(JToken rules)
         {
             bool allowed = false;
+            bool is64 = System.Environment.Is64BitProcess;
+            string currentArch = is64 ? "x64" : "x86";
             foreach (var rule in rules)
             {
                 string action = rule["action"] is JToken actionToken ? actionToken.ToString() : null;
                 string osName = (rule["os"] is JToken osToken && osToken["name"] is JToken osNameToken) ? osNameToken.ToString() : null;
+                string osArch = (rule["os"] is JToken osTok2 && osTok2["arch"] is JToken archTok) ? archTok.ToString() : null;
                 if (rule["features"] != null) continue;
-                if (action == "allow" && (osName == null || osName == "windows")) allowed = true;
-                else if (action == "disallow" && (osName == null || osName == "windows")) allowed = false;
+                // os.name 不符合 → 跳过该规则
+                if (osName != null && osName != "windows") continue;
+                // os.arch 不符合 → 跳过该规则（如 x86-only 规则在 x64 上不生效）
+                if (osArch != null && osArch != currentArch) continue;
+                if (action == "allow") allowed = true;
+                else if (action == "disallow") allowed = false;
             }
             return allowed;
         }

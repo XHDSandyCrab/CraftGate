@@ -10,7 +10,7 @@ namespace CraftGate.Core.Game
 {
     public static class JavaManager
     {
-        private static readonly HttpClient _client = new HttpClient();
+        private static readonly HttpClient _client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         private static readonly string RuntimesRoot = Path.Combine(PathManager.LauncherDir, "runtimes");
 
         public static int GetRequiredJavaMajorVersion(JObject versionJson)
@@ -51,10 +51,28 @@ namespace CraftGate.Core.Game
                 using (var response = await _client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                 {
                     response.EnsureSuccessStatusCode();
+                    long total = response.Content.Headers.ContentLength ?? 0;
 
-                    using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (var src = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                    using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
                     {
-                        await response.Content.CopyToAsync(fs).ConfigureAwait(false);
+                        var buffer = new byte[81920];
+                        long read = 0;
+                        int n;
+                        int lastPct = -5;
+                        while ((n = await src.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
+                        {
+                            await fs.WriteAsync(buffer, 0, n).ConfigureAwait(false);
+                            read += n;
+                            int pct = total > 0 ? (int)(read * 100 / total) : (int)(read / 1024 / 1024);
+                            if (pct - lastPct >= 10)
+                            {
+                                lastPct = pct;
+                                logCallback(total > 0
+                                    ? $"[Java] 下载 JRE {majorVersion}: {pct}% ({read / 1024 / 1024}/{total / 1024 / 1024} MB)"
+                                    : $"[Java] 下载 JRE {majorVersion}: {read / 1024 / 1024} MB");
+                            }
+                        }
                     }
                 }
 

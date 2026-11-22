@@ -55,6 +55,21 @@ namespace CraftGate.Services
             }
         }
 
+        /// <summary>
+        /// 批量添加任务：只在最后统一重建一次分组/扁平列表，避免逐个 AddTask 造成的 O(n³) 卡顿。
+        /// </summary>
+        public int AddTasks(IEnumerable<FileDownloadTask> newTasks)
+        {
+            int added = 0;
+            var existing = new HashSet<FileDownloadTask>(Tasks);
+            foreach (var t in newTasks)
+            {
+                if (existing.Add(t)) { Tasks.Add(t); added++; }
+            }
+            if (added > 0) UpdateGroups();
+            return added;
+        }
+
         public void Clear()
         {
             Tasks.Clear();
@@ -222,18 +237,24 @@ namespace CraftGate.Services
             UpdateProgress();
         }
 
+        private bool _sortedOnce; // 是否已排过序：排一次后不再反复 Move，避免每次 tick 的 O(n²)
         public void UpdateProgress()
         {
             Progress = Tasks.Count > 0 ? Tasks.Average(t => t.Progress) : 0;
 
-            // 确保下完的沉底
+            // 【性能】原来的逐个 Tasks.Move 排序是 O(n²)，且被 100ms timer 反复触发 → UI 假死。
+            // 改为：只在任务列表完成后做一次稳定排序；之后仅更新 Progress 数值，不再移动项。
+            if (_sortedOnce) return;
             var sorted = Tasks.OrderBy(t => t.Progress >= 100 ? 1 : 0).ToList();
+            bool changed = false;
             for (int i = 0; i < sorted.Count; i++)
+                if (!ReferenceEquals(Tasks[i], sorted[i])) { changed = true; break; }
+            if (changed)
             {
-                if (Tasks[i] != sorted[i])
-                {
-                    Tasks.Move(Tasks.IndexOf(sorted[i]), i);
-                }
+                // 一次性重建 ObservableCollection，比逐个 Move 触发 N 次 CollectionChanged 快得多
+                Tasks = new ObservableCollection<FileDownloadTask>(sorted);
+                OnPropertyChanged(nameof(Tasks));
+                _sortedOnce = true;
             }
         }
     }

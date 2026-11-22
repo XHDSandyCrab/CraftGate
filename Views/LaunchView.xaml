@@ -289,8 +289,8 @@
                                    Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
 
-                    <!-- GIF 播放区：Source 绑定 LaunchGifPath，路径为空时显示占位提示 -->
-                    <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0">
+                    <!-- GIF 播放区：已按用户要求隐藏加载动画 -->
+                    <Grid Grid.Column="1" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0">
                         <Border x:Name="GifPlaceholder" Width="160" Height="44" CornerRadius="6"
                                 Background="#0AFFFFFF" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1">
                             <Border.Style>

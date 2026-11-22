@@ -67,7 +67,14 @@ namespace CraftGate.Services
         {
             try
             {
-                if (!File.Exists(AccountFile)) { EnsureDefault(); return; }
+                // 首次运行：创建默认 Steve 账户并立即落盘，避免"启动时没有账户"
+                if (!File.Exists(AccountFile))
+                {
+                    Accounts = new List<OfflineAccount>();
+                    EnsureDefault();
+                    Save();
+                    return;
+                }
                 string json = File.ReadAllText(AccountFile);
                 // 新格式：数组
                 if (json.TrimStart().StartsWith("["))

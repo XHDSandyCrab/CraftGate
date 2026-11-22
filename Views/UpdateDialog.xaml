@@ -93,7 +93,8 @@
                         <TextBlock x:Name="DownloadDetailText" Text="准备中..." FontSize="12"
                                    Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,12,0,8"/>
                         <Border Height="8" Background="#2B2E35" CornerRadius="4" ClipToBounds="True">
-                            <Grid x:Name="ProgressBarFill" Width="0" HorizontalAlignment="Left" Background="{StaticResource AccentBrush}"/>
+                            <Border x:Name="ProgressBarFill" Width="0" Height="8" HorizontalAlignment="Left"
+                                    Background="{StaticResource AccentBrush}" CornerRadius="4"/>
                         </Border>
                         <TextBlock x:Name="DownloadStatusText" Text="" FontSize="11"
                                    Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,10,0,0" TextWrapping="Wrap"/>

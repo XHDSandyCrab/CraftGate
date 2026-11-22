@@ -32,12 +32,23 @@ namespace CraftGate.Services
                 return 8;
 
             // ③ 正式版 1.x.y
-            var m = System.Text.RegularExpressions.Regex.Match(v, @"(\d+)\.(\d+)");
+            // 新编号方案 26.x（如 26.3）→ Java 25（Mojang 官方 javaVersion.majorVersion=25）
+            var newScheme = System.Text.RegularExpressions.Regex.Match(v, @"^(\d{2})\.\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (newScheme.Success)
+            {
+                int ny = int.Parse(newScheme.Groups[1].Value);
+                if (ny >= 26) return 25;   // MC 26.x 起升级到 Java 25
+                return 21;                 // 25.x 及更早的新编号 → Java 21
+            }
+
+            var m = System.Text.RegularExpressions.Regex.Match(v, @"(\d+)\.(\d+)(?:\.(\d+))?");
             if (!m.Success) return 8;
             int major = int.Parse(m.Groups[1].Value);
             int minor = int.Parse(m.Groups[2].Value);
-            if (major > 1) return 21;          // 形如 26.1 的新编号
+            int patch = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
+            if (major > 1) return 21;          // 形如 25.1 的新编号
             if (minor >= 21) return 21;
+            if (minor == 20 && patch >= 5) return 21;  // 1.20.5+ 需要 Java 21（原代码漏判，修正）
             if (minor >= 18) return 17;
             if (minor == 17) return 16;
             return 8;
@@ -68,21 +79,95 @@ namespace CraftGate.Services
                 }
             }
 
-            // 3. 检查默认安装路径（兜底）
-            string pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            string[] commonPaths = {
-                Path.Combine(pf, "Java", "jdk-21", "bin", "java.exe"),
-                Path.Combine(pf, "Java", "jdk-17", "bin", "java.exe"),
-                Path.Combine(pf, "Java", "jdk1.8.0_291", "bin", "java.exe"),
-                Path.Combine(pf, "BellSoft", "LibericaJDK-17", "bin", "java.exe")
-            };
+            // 3. 常见安装根目录下的所有 java.exe（jdk-17 / jdk-21.0.3 / jre1.8.0_391 等通配）
+            foreach (var found in ScanCommonRoots())
+                if (File.Exists(found)) return found;
 
-            foreach (var p in commonPaths)
+            // 4. 注册表兜底
+            try
             {
-                if (File.Exists(p)) return p;
+                using (var reg = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
+                    @"SOFTWARE\JavaSoft\Java Development Kit"))
+                {
+                    if (reg != null)
+                        foreach (var sub in reg.GetSubKeyNames())
+                        {
+                            using (var sk = reg.OpenSubKey(sub))
+                            {
+                                string home = sk?.GetValue("JavaHome") as string;
+                                if (!string.IsNullOrEmpty(home))
+                                {
+                                    string exe = Path.Combine(home, "bin", "java.exe");
+                                    if (File.Exists(exe)) return exe;
+                                }
+                            }
+                        }
+                }
             }
+            catch { }
 
             return null; // 没找到
+        }
+
+        /// <summary>扫描常见 JDK/JRE 安装根目录，返回所有可能的 java.exe 路径。</summary>
+        private static System.Collections.Generic.IEnumerable<string> ScanCommonRoots()
+        {
+            var roots = new System.Collections.Generic.List<string>();
+            foreach (var pf in new[] {
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles).Replace("Program Files", "Program Files (x86)")
+            })
+            {
+                if (string.IsNullOrEmpty(pf)) continue;
+                roots.Add(Path.Combine(pf, "Java"));
+                roots.Add(Path.Combine(pf, "Eclipse Adoptium"));
+                roots.Add(Path.Combine(pf, "Microsoft"));
+                roots.Add(Path.Combine(pf, "BellSoft"));
+                roots.Add(Path.Combine(pf, "Amazon Corretto"));
+                roots.Add(Path.Combine(pf, "Zulu"));
+            }
+            foreach (var root in roots)
+            {
+                if (!Directory.Exists(root)) continue;
+                // 每个安装目录直接查 bin\java.exe（如 Eclipse Adoptium\jdk-25-hotspot\bin\java.exe）
+                foreach (var dir in Directory.GetDirectories(root))
+                {
+                    string exe = Path.Combine(dir, "bin", "java.exe");
+                    if (File.Exists(exe)) yield return exe;
+                    // 再下一层（如 Microsoft\jdk-25.0.1\bin）
+                    foreach (var sub in Directory.GetDirectories(dir))
+                    {
+                        string exe2 = Path.Combine(sub, "bin", "java.exe");
+                        if (File.Exists(exe2)) yield return exe2;
+                    }
+                }
+            }
+        }
+
+        /// <summary>读取指定 java.exe 的主版本号（如 25），失败返回 0。</summary>
+        public static int GetJavaMajor(string javaExe)
+        {
+            if (string.IsNullOrEmpty(javaExe) || !File.Exists(javaExe)) return 0;
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(javaExe, "-version")
+                {
+                    RedirectStandardError = true, RedirectStandardOutput = true,
+                    UseShellExecute = false, CreateNoWindow = true
+                };
+                using (var p = System.Diagnostics.Process.Start(psi))
+                {
+                    string output = p.StandardError.ReadToEnd() + p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(3000);
+                    // openjdk version "25.0.1" / java version "1.8.0_391"
+                    var m = System.Text.RegularExpressions.Regex.Match(output, @"version\s+""(\d+)(?:\.(\d+))?");
+                    if (!m.Success) return 0;
+                    int first = int.Parse(m.Groups[1].Value);
+                    return first == 1 && m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : first;
+                }
+            }
+            catch { return 0; }
         }
     }
 }

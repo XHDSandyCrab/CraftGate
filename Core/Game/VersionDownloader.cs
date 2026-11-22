@@ -111,37 +111,26 @@ namespace CraftGate.Core.Game
 
                 var missingTasks = new List<FileDownloadTask>();
                 var missingAssets = new List<FileDownloadTask>();
+                var allTasksToAdd = new List<FileDownloadTask>(allTasks.Count + assetTasks.Count);
 
-                // 检测是否存在
+                // 检测是否存在（只做纯 File.Exists 判断，不触发 UI；随后一次性批量加入）
                 foreach (var task in allTasks)
                 {
                     if (File.Exists(task.SavePath) && (task.FileSize == -1 || new FileInfo(task.SavePath).Length == task.FileSize))
-                    {
-                        task.Progress = 100; // 触发内部状态为已完成
-                        DownloadManager.Instance.AddTask(task);
-                    }
-                    else
-                    {
-                        task.Status = "等待中";
-                        missingTasks.Add(task);
-                        DownloadManager.Instance.AddTask(task);
-                    }
+                        task.Progress = 100;
+                    else { task.Status = "等待中"; missingTasks.Add(task); }
+                    allTasksToAdd.Add(task);
                 }
 
                 foreach (var task in assetTasks)
                 {
-                    if (File.Exists(task.SavePath))
-                    {
-                        task.Progress = 100;
-                        DownloadManager.Instance.AddTask(task);
-                    }
-                    else
-                    {
-                        task.Status = "等待中";
-                        missingAssets.Add(task);
-                        DownloadManager.Instance.AddTask(task);
-                    }
+                    if (File.Exists(task.SavePath)) task.Progress = 100;
+                    else { task.Status = "等待中"; missingAssets.Add(task); }
+                    allTasksToAdd.Add(task);
                 }
+
+                // 【性能关键】一次批量加入，只重建一次分组（原逐个 AddTask 是 O(n³) → 卡死）
+                DownloadManager.Instance.AddTasks(allTasksToAdd);
 
                 progressCallback?.Invoke($"[检测] 需下载核心库 {missingTasks.Count} 个，资源 {missingAssets.Count} 个", 5);
 

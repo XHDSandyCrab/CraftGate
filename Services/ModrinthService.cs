@@ -118,11 +118,12 @@ namespace CraftGate.Services
                 // 硬过滤会导致结果极少。改为搜全部，由本地按兼容性排序/标注（PCL2 风格）。
                 // loader 用 OR 组（Fabric↔Quilt、Forge↔NeoForge 互通），扩大覆盖面。
                 string facets = $"[ [\"project_type:{projectType}\"]";
-                string[] loaders = ModCompatibilityService.GetSearchLoaders(loader);
+                // 【修复】光影(shader)/资源包(resourcepack)/数据包(datapack)/整合包(modpack)不依赖 loader，
+                // 加 categories:fabric 过滤会把绝大多数光影排除（只剩打标签的少数几个）。只对 mod 加 loader 过滤。
+                bool needsLoader = string.Equals(projectType, "mod", StringComparison.OrdinalIgnoreCase);
+                string[] loaders = needsLoader ? ModCompatibilityService.GetSearchLoaders(loader) : new string[0];
                 if (loaders.Length > 0)
                 {
-                    // OR 语义：多个 loader 各成一组
-                    facets = "[ [\"project_type:" + projectType + "\"]";
                     facets += ", [" + string.Join(",", loaders.Select(l => $"\"categories:{l}\"")) + "]";
                 }
                 facets += " ]";

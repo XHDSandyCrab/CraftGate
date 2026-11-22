@@ -15,6 +15,7 @@ namespace CraftGate.Views
     public partial class UpdateDialog : UserControl
     {
         private CraftGate.Services.UpdateService.UpdateResult _result;
+        private bool _downloading = false;   // 下载中不允许关闭弹窗
 
         public UpdateDialog()
         {
@@ -27,7 +28,18 @@ namespace CraftGate.Views
         {
             _result = result;
             VersionText.Text = $"v{result.LatestVersion}  （当前 v{CraftGate.Services.UpdateService.CurrentVersion}）";
-            NotesText.Text = string.IsNullOrWhiteSpace(result.ReleaseNotes) ? "暂无更新日志" : result.ReleaseNotes.Trim();
+            // 过滤掉内部标记行（[强制更新]/MUST_UPDATE 等），不显示给用户
+            string notes = result.ReleaseNotes ?? "";
+            var kept = new System.Collections.Generic.List<string>();
+            foreach (var line in notes.Replace("\r\n", "\n").Split('\n'))
+            {
+                string t = line.Trim();
+                if (string.IsNullOrWhiteSpace(t)) continue;
+                if (System.Text.RegularExpressions.Regex.IsMatch(t, @"^(\[强制更新\]|\[必须更新\]|MUST_UPDATE)$",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
+                kept.Add(line);
+            }
+            NotesText.Text = kept.Count == 0 ? "暂无更新日志" : string.Join("\n", kept).Trim();
 
             // 强制更新：隐藏叉叉和"稍后"，只能立即更新
             CloseBtn.Visibility = result.IsMandatory ? Visibility.Collapsed : Visibility.Visible;
@@ -90,7 +102,10 @@ namespace CraftGate.Views
                 return;
             }
 
-            // 切到下载进度界面（强制更新时关不掉，必须等下载完成）
+            // 切到下载进度界面：隐藏叉叉/稍后/日志/按钮，下载中不允许关闭
+            _downloading = true;
+            CloseBtn.Visibility = Visibility.Collapsed;
+            LaterBtn.Visibility = Visibility.Collapsed;
             DownloadPanel.Visibility = Visibility.Visible;
             DownloadDetailText.Text = "正在连接更新服务器...";
 
@@ -116,10 +131,13 @@ namespace CraftGate.Views
             catch (Exception ex)
             {
                 // 下载失败：提示并退回发布页，不卡死弹窗
+                _downloading = false;
                 Dispatcher.Invoke(() =>
                 {
                     DownloadPanel.Visibility = Visibility.Collapsed;
                     DownloadStatusText.Text = "";
+                    CloseBtn.Visibility = _result != null && _result.IsMandatory ? Visibility.Collapsed : Visibility.Visible;
+                    LaterBtn.Visibility = _result != null && _result.IsMandatory ? Visibility.Collapsed : Visibility.Visible;
                 });
                 if (Application.Current.MainWindow is MainWindow mw)
                     mw.ShowToastError("更新下载失败：" + ex.Message);
@@ -132,12 +150,12 @@ namespace CraftGate.Views
             }
         }
 
-        private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
-        private void LaterBtn_Click(object sender, RoutedEventArgs e) => Close();
+        private void CloseBtn_Click(object sender, RoutedEventArgs e) { if (!_downloading) Close(); }
+        private void LaterBtn_Click(object sender, RoutedEventArgs e) { if (!_downloading) Close(); }
         private void Backdrop_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            // 强制更新时点遮罩不关闭
-            if (_result != null && _result.IsMandatory) return;
+            // 强制更新或下载中，点遮罩都不关闭
+            if ((_result != null && _result.IsMandatory) || _downloading) return;
             Close();
         }
 

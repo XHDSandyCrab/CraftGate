@@ -252,14 +252,6 @@
                         <TextBox Grid.Column="1" Text="{Binding MaxMemoryMB, UpdateSourceTrigger=LostFocus}" Style="{StaticResource DarkTextBoxStyle}" Width="100" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" TextAlignment="Center"/>
                     </Grid>
 
-                    <!-- 6. 微软正版登录 Client ID -->
-                    <StackPanel Margin="0,0,0,32">
-                        <TextBlock Text="微软正版登录 Client ID" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
-                        <TextBlock Text="要用正版登录，需填入你自己申请的客户端 ID（和 PCL2 一样）。" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" TextWrapping="Wrap"/>
-                        <TextBlock Text="申请：到 entra.microsoft.com 注册应用（账户类型选「个人 Microsoft 账户」，勾「允许公共客户端流」），拿到的应用程序(客户端)ID 填在下面；再到 aka.ms/mce-reviewappid 提交该 ID 过 Mojang 白名单审核，否则登录会报 403。" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12" TextWrapping="Wrap" LineHeight="18"/>
-                        <TextBox Text="{Binding MicrosoftClientId, UpdateSourceTrigger=LostFocus}" Style="{StaticResource DarkTextBoxStyle}" Height="36" VerticalContentAlignment="Center"/>
-                    </StackPanel>
-
                     <!-- 7. 窗口背景材质 -->
                     <StackPanel Margin="0,0,0,16">
                         <TextBlock Text="窗口背景" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
