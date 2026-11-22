@@ -130,6 +130,29 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
+                <!-- 无账户时覆盖整个账户信息区，不显示游离的 Steve 和启动按钮 -->
+                <Grid x:Name="NoAccountOverlay" Grid.RowSpan="7" Panel.ZIndex="10">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasAccount}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Border Background="#23252B" CornerRadius="4">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="还没有账户" FontSize="16" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="请到「账户」页创建一个账户后再启动游戏" FontSize="12"
+                                       Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"
+                                       Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center" Width="260"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
                 <controls:SkinPreview3D Grid.Row="0" Skin="{Binding SkinImage}" Cape="{Binding CapeImage}"
                                         AutoActivate="True" Animate="True" MinHeight="200"
                                         HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>

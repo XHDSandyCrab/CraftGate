@@ -533,11 +533,7 @@ namespace CraftGate.ViewModels
         private void DeleteAccount(string id)
         {
             if (string.IsNullOrEmpty(id)) return;
-            if (Accounts.Count <= 1)
-            {
-                ShowNotice("至少保留一个账户。");
-                return;
-            }
+            // 【按用户要求】允许删光所有账户，不再强制保留一个
             var target = Accounts.FirstOrDefault(a => a.Id == id);
             if (target == null) return;
             ShowNotice($"确定删除账户「{target.Username}」吗？", "删除账户", isConfirm: true, blurBackground: true, onConfirm: () =>
@@ -545,10 +541,21 @@ namespace CraftGate.ViewModels
                 if (AccountService.RemoveAccount(id))
                 {
                     RefreshAccountList();
-                    var cur = AccountService.CurrentAccount;
-                    PlayerName = cur.Username;
-                    _currentSkinPath = cur.SkinPath;
-                    _ = LoadSkinAsync();
+                    if (AccountService.HasAccount)
+                    {
+                        var cur = AccountService.CurrentAccount;
+                        PlayerName = cur.Username;
+                        _currentSkinPath = cur.SkinPath;
+                        _ = LoadSkinAsync();
+                    }
+                    else
+                    {
+                        // 删光了：清空账户详情，不再显示游离的 Steve
+                        PlayerName = "";
+                        SkinImage = null;
+                        CurrentCapeImage = null;
+                        _currentSkinPath = "";
+                    }
                     if (Application.Current.MainWindow is MainWindow mw)
                         mw.SyncAccountToLaunchPage();
                 }

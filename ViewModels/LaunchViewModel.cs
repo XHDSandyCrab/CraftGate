@@ -17,7 +17,7 @@ namespace CraftGate.ViewModels
 {
     public class LaunchViewModel : ViewModelBase
     {
-        private string _playerName = "Steve";
+        private string _playerName = "";
         private ImageSource _skinImage;
         private bool _isLaunching;
         private double _progress;
@@ -31,6 +31,7 @@ namespace CraftGate.ViewModels
         private readonly Random _progressRandom = new Random();
 
         public string PlayerName { get => _playerName; set => Set(ref _playerName, value); }
+        public bool HasAccount { get => CraftGate.Services.AccountService.HasAccount; }
         public ImageSource SkinImage { get => _skinImage; set => Set(ref _skinImage, value); }
         public ImageSource CapeImage { get => _capeImage; set => Set(ref _capeImage, value); }
         private ImageSource _capeImage;
@@ -182,6 +183,15 @@ namespace CraftGate.ViewModels
 
         public async Task RefreshAccountAsync()
         {
+            OnPropertyChanged(nameof(HasAccount));
+            // 【无账户】不显示游离的 Steve 兜底对象，清空皮肤/名字，界面显示空状态
+            if (!AccountService.HasAccount)
+            {
+                PlayerName = "";
+                SkinImage = null;
+                CapeImage = null;
+                return;
+            }
             PlayerName = AccountService.CurrentAccount.Username;
             string skinPath = AccountService.CurrentAccount.SkinPath;
 
