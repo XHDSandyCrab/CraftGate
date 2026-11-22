@@ -608,15 +608,26 @@ namespace CraftGate.ViewModels
             if (match != null) SelectSkinSilently(match);
             if (CapeLibrary.Count == 0)
             {
-                foreach (var c in SkinLibraryService.GetCapes()) CapeLibrary.Add(c);
                 // 联网补充云端披风（失败不影响本地）
+                // 【修复】原代码用 ConfigureAwait(false) 导致 await 后掉到后台线程，
+                // CapeLibrary 绑定 CollectionView，跨线程 Add 抛 NotSupportedException。
+                // 这里联网仍可后台跑，但拿到结果后统一切回 UI 线程再改集合。
+                var localCapes = SkinLibraryService.GetCapes();
                 var onlineCapes = await SkinLibraryService.ScanOnlineCapesAsync().ConfigureAwait(false);
-                foreach (var c in onlineCapes) CapeLibrary.Add(c);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    foreach (var c in localCapes) CapeLibrary.Add(c);
+                    foreach (var c in onlineCapes) CapeLibrary.Add(c);
+                });
             }
-            // 披风卡片用 3D 角色预览：给每张卡填充角色皮肤（当前皮肤 or 默认 Steve）
-            var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "skins", "Steve.png"));
-            foreach (var c in CapeLibrary) c.ModelSkin = modelSkin;
+            // 披风卡片用 3D 角色预览：给每张卡填充角色皮肤（当前皮肤 or 默认 Steve）。
+            // 同样切回 UI 线程改绑定属性。
+            var modelSkinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "skins", "Steve.png");
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(modelSkinPath);
+                foreach (var c in CapeLibrary) c.ModelSkin = modelSkin;
+            });
         }
 
         // 皮肤站搜索/刷新/加载更多：reset=true 从头搜并清空旧云端，false 追加下一页
