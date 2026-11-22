@@ -396,11 +396,11 @@ namespace CraftGate.Controls
             try
             {
                 const double cw = 10, ch = 16, depth = 1; // 宽10 高16 厚1（标准长方体）
-                // 位置：披在角色背后。skinview3d: cape pivot (y=8,z=-2)，box 中心 (y=-8,z=0.5)
-                // → 盒顶在 y=8(肩)，底在 y=-8，Z 中心 -2+0.5=-1.5（身体后面，身体厚4 => 背面 z=-2）
-                double pivotY = 8, pivotZ = -2.0;
+                // 身体中心 z=0 厚4 → 背面 z=-2。披风必须完全在身体之外才看得见：
+                // pivot 放 z=-2.6（肩后一点），盒中心 z=-3.1，盒范围 -2.6 ~ -3.6，彻底脱离身体。
+                double pivotY = 8, pivotZ = -2.6;
                 double centerY = pivotY - ch / 2.0;   // 0
-                double centerZ = pivotZ + depth / 2.0; // -1.5
+                double centerZ = pivotZ - depth / 2.0; // -3.1（往外，不是往身体方向）
 
                 var brush = new ImageBrush(cape) { Stretch = Stretch.Fill };
                 RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
@@ -429,7 +429,7 @@ namespace CraftGate.Controls
 
                 double xL = -cw / 2, xR = cw / 2;
                 double yT = centerY + ch / 2, yB = centerY - ch / 2; // 8 / -8
-                double zFront = centerZ + depth / 2, zBack = centerZ - depth / 2; // -1.0 / -2.0
+                double zFront = centerZ + depth / 2, zBack = centerZ - depth / 2; // -2.6(贴身侧) / -3.6(外侧)
 
                 // 外层(玩家看到的外面，朝 -Z)：x=1..11, y=1..17
                 AddQuad(new Point3D(xR, yT, zBack), new Point3D(xL, yT, zBack),

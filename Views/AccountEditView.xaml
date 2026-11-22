@@ -415,12 +415,26 @@
                                                     Cursor="Hand" Margin="0,0,6,0"
                                                     Command="{Binding DataContext.GoBuiltinPageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="True">
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                <Setter Property="Width" Value="24"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="B" Background="#2D3036" CornerRadius="8">
+                                                        <Border x:Name="B" Background="Transparent" CornerRadius="8">
                                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Border>
                                                         <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="False">
+                                                                <Setter TargetName="B" Property="Background" Value="#2D3036"/>
+                                                            </DataTrigger>
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter TargetName="B" Property="Background" Value="#3A4048"/>
                                                             </Trigger>
@@ -452,12 +466,26 @@
                                                     Cursor="Hand" Margin="0,0,6,0"
                                                     Command="{Binding DataContext.GoOnlinePageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="True">
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                <Setter Property="Width" Value="24"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="B" Background="#2D3036" CornerRadius="8">
+                                                        <Border x:Name="B" Background="Transparent" CornerRadius="8">
                                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Border>
                                                         <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="False">
+                                                                <Setter TargetName="B" Property="Background" Value="#2D3036"/>
+                                                            </DataTrigger>
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter TargetName="B" Property="Background" Value="#3A4048"/>
                                                             </Trigger>
@@ -555,12 +583,26 @@
                                                     Cursor="Hand" Margin="0,0,6,0"
                                                     Command="{Binding DataContext.GoBuiltinCapePageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="True">
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                <Setter Property="Width" Value="24"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="B" Background="#2D3036" CornerRadius="8">
+                                                        <Border x:Name="B" Background="Transparent" CornerRadius="8">
                                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Border>
                                                         <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="False">
+                                                                <Setter TargetName="B" Property="Background" Value="#2D3036"/>
+                                                            </DataTrigger>
                                                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="#3A4048"/></Trigger>
                                                             <DataTrigger Binding="{Binding IsCurrent}" Value="True"><Setter TargetName="B" Property="Background" Value="{StaticResource AccentBrush}"/></DataTrigger>
                                                         </ControlTemplate.Triggers>
@@ -585,12 +627,26 @@
                                                     Cursor="Hand" Margin="0,0,6,0"
                                                     Command="{Binding DataContext.GoOnlineCapePageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="IsEnabled" Value="True"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="True">
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                <Setter Property="Width" Value="24"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
-                                                        <Border x:Name="B" Background="#2D3036" CornerRadius="8">
+                                                        <Border x:Name="B" Background="Transparent" CornerRadius="8">
                                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Border>
                                                         <ControlTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEllipsis}" Value="False">
+                                                                <Setter TargetName="B" Property="Background" Value="#2D3036"/>
+                                                            </DataTrigger>
                                                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="#3A4048"/></Trigger>
                                                             <DataTrigger Binding="{Binding IsCurrent}" Value="True"><Setter TargetName="B" Property="Background" Value="{StaticResource AccentBrush}"/></DataTrigger>
                                                         </ControlTemplate.Triggers>

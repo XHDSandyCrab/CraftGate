@@ -753,6 +753,29 @@ namespace CraftGate.ViewModels
             foreach (var c in OnlineCapes) c.ModelSkin = skin;
         }
 
+        // 生成"省略号"页码：首页、末页、当前页±2，中间用 ... 省略（参考常见分页样式）
+        // total=总页数(从1计)，current=当前页(从0计)
+        private void FillPageNumbers(ObservableCollection<PageItem> target, int total, int current)
+        {
+            target.Clear();
+            if (total <= 0) total = 1;
+            var show = new System.Collections.Generic.HashSet<int> { 0, total - 1 };
+            for (int d = -2; d <= 2; d++)
+            {
+                int p = current + d;
+                if (p >= 0 && p < total) show.Add(p);
+            }
+            var sorted = show.OrderBy(x => x).ToList();
+            int prev = -1;
+            foreach (int p in sorted)
+            {
+                if (prev >= 0 && p - prev > 1)
+                    target.Add(new PageItem { IsEllipsis = true, Number = -1 });
+                target.Add(new PageItem { Number = p, IsCurrent = (p == current) });
+                prev = p;
+            }
+        }
+
         // 更新披风两栏的当前页与页码按钮
         private void UpdateCapePages()
         {
@@ -762,17 +785,13 @@ namespace CraftGate.ViewModels
             int bs = _builtinCapePageIndex * CapePageSize;
             for (int i = bs; i < Math.Min(bs + CapePageSize, BuiltinCapes.Count); i++)
                 BuiltinCapePage.Add(BuiltinCapes[i]);
-            BuiltinCapePageNumbers.Clear();
-            for (int p = 0; p < TotalBuiltinCapePages; p++)
-                BuiltinCapePageNumbers.Add(new PageItem { Number = p, IsCurrent = (p == _builtinCapePageIndex) });
+            FillPageNumbers(BuiltinCapePageNumbers, TotalBuiltinCapePages, _builtinCapePageIndex);
 
             OnlineCapePage.Clear();
             int os = _onlineCapePageIndex * CapePageSize;
             for (int i = os; i < Math.Min(os + CapePageSize, OnlineCapes.Count); i++)
                 OnlineCapePage.Add(OnlineCapes[i]);
-            OnlineCapePageNumbers.Clear();
-            for (int p = 0; p < TotalOnlineCapePages; p++)
-                OnlineCapePageNumbers.Add(new PageItem { Number = p, IsCurrent = (p == _onlineCapePageIndex) });
+            FillPageNumbers(OnlineCapePageNumbers, TotalOnlineCapePages, _onlineCapePageIndex);
         }
 
         // 披风网站搜索：按关键词拉 skinmc 披风，切到在线栏显示
@@ -849,9 +868,7 @@ namespace CraftGate.ViewModels
             int start = _builtinPageIndex * BuiltinPageSize;
             for (int i = start; i < Math.Min(start + BuiltinPageSize, BuiltinSkins.Count); i++)
                 BuiltinPageSkins.Add(BuiltinSkins[i]);
-            BuiltinPageNumbers.Clear();
-            for (int p = 0; p < TotalBuiltinPages; p++)
-                BuiltinPageNumbers.Add(new PageItem { Number = p, IsCurrent = (p == _builtinPageIndex) });
+            FillPageNumbers(BuiltinPageNumbers, TotalBuiltinPages, _builtinPageIndex);
             OnPropertyChanged(nameof(TotalBuiltinPages));
         }
 
@@ -862,9 +879,7 @@ namespace CraftGate.ViewModels
             int start = _onlinePageIndex * OnlinePageSize;
             for (int i = start; i < Math.Min(start + OnlinePageSize, OnlineSkins.Count); i++)
                 OnlinePageSkins.Add(OnlineSkins[i]);
-            OnlinePageNumbers.Clear();
-            for (int p = 0; p < TotalOnlinePages; p++)
-                OnlinePageNumbers.Add(new PageItem { Number = p, IsCurrent = (p == _onlinePageIndex) });
+            FillPageNumbers(OnlinePageNumbers, TotalOnlinePages, _onlinePageIndex);
             OnPropertyChanged(nameof(TotalOnlinePages));
         }
 
@@ -1174,7 +1189,8 @@ namespace CraftGate.ViewModels
     public class PageItem : ViewModelBase
     {
         public int Number { get; set; }
-        public string DisplayNumber => (Number + 1).ToString();
+        public bool IsEllipsis { get; set; }
+        public string DisplayNumber => IsEllipsis ? "..." : (Number + 1).ToString();
         private bool _isCurrent;
         public bool IsCurrent { get => _isCurrent; set => Set(ref _isCurrent, value); }
     }
