@@ -43,38 +43,52 @@ namespace CraftGate.Core.Game
             logCallback($"[Java] 未检测到 JRE {majorVersion}，正在为您自动下载（这可能需要几分钟）...");
             Directory.CreateDirectory(targetDir);
 
-            string downloadUrl = $"https://api.adoptium.net/v3/binary/latest/{majorVersion}/ga/windows/x64/jre/hotspot/normal/eclipse";
             string tempZipPath = Path.Combine(targetDir, $"jre-{majorVersion}.zip");
 
             try
             {
-                using (var response = await _client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
-                {
-                    response.EnsureSuccessStatusCode();
-                    long total = response.Content.Headers.ContentLength ?? 0;
+                // 【修复】多源下载：官方 Adoptium API 会跳到 GitHub（国内极慢/卡死），
+                // 优先用清华 TUNA 镜像（国内快），失败再回退官方。每个源独立短超时。
+                bool downloaded = false;
+                Exception lastError = null;
 
-                    using (var src = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                    using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                // 源1：清华 TUNA 镜像（解析目录页拿到最新 zip 文件名）
+                try
+                {
+                    string mirrorDir = $"https://mirrors.tuna.tsinghua.edu.cn/Adoptium/{majorVersion}/jre/x64/windows/";
+                    logCallback($"[Java] 正在从国内镜像获取 JRE {majorVersion} 下载链接...");
+                    using (var page = await _client.GetAsync(mirrorDir).ConfigureAwait(false))
                     {
-                        var buffer = new byte[81920];
-                        long read = 0;
-                        int n;
-                        int lastPct = -5;
-                        while ((n = await src.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
+                        page.EnsureSuccessStatusCode();
+                        string html = await page.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var m = System.Text.RegularExpressions.Regex.Matches(html,
+                            @"OpenJDK" + majorVersion + @"U-jre_x64_windows_hotspot_[0-9._]+\.zip");
+                        if (m.Count > 0)
                         {
-                            await fs.WriteAsync(buffer, 0, n).ConfigureAwait(false);
-                            read += n;
-                            int pct = total > 0 ? (int)(read * 100 / total) : (int)(read / 1024 / 1024);
-                            if (pct - lastPct >= 10)
-                            {
-                                lastPct = pct;
-                                logCallback(total > 0
-                                    ? $"[Java] 下载 JRE {majorVersion}: {pct}% ({read / 1024 / 1024}/{total / 1024 / 1024} MB)"
-                                    : $"[Java] 下载 JRE {majorVersion}: {read / 1024 / 1024} MB");
-                            }
+                            string fileName = m[m.Count - 1].Value; // 最后一个通常是最新
+                            string mirrorUrl = mirrorDir + fileName;
+                            logCallback($"[Java] 国内镜像下载: {fileName}");
+                            await DownloadWithProgressAsync(mirrorUrl, tempZipPath, majorVersion, logCallback).ConfigureAwait(false);
+                            downloaded = true;
                         }
                     }
                 }
+                catch (Exception ex) { lastError = ex; logCallback($"[Java] 国内镜像失败，尝试官方源: {ex.Message}"); }
+
+                // 源2：官方 Adoptium API（可能跳 GitHub）
+                if (!downloaded)
+                {
+                    try
+                    {
+                        string officialUrl = $"https://api.adoptium.net/v3/binary/latest/{majorVersion}/ga/windows/x64/jre/hotspot/normal/eclipse";
+                        logCallback($"[Java] 正在从官方源下载 JRE {majorVersion}（可能需要几分钟）...");
+                        await DownloadWithProgressAsync(officialUrl, tempZipPath, majorVersion, logCallback).ConfigureAwait(false);
+                        downloaded = true;
+                    }
+                    catch (Exception ex) { lastError = ex; }
+                }
+
+                if (!downloaded) throw lastError ?? new Exception("所有下载源均失败");
 
                 logCallback($"[Java] JRE {majorVersion} 下载完成，正在解压...");
 
@@ -96,6 +110,37 @@ namespace CraftGate.Core.Game
             {
                 logCallback($"[Java] 自动下载 JRE {majorVersion} 失败: {ex.Message}");
                 throw;
+            }
+        }
+
+        /// <summary>流式下载 zip 并输出进度百分比。</summary>
+        private static async Task DownloadWithProgressAsync(string url, string savePath, int major, Action<string> logCallback)
+        {
+            using (var response = await _client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
+            {
+                response.EnsureSuccessStatusCode();
+                long total = response.Content.Headers.ContentLength ?? 0;
+                using (var src = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                using (var fs = new FileStream(savePath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+                {
+                    var buffer = new byte[81920];
+                    long read = 0;
+                    int n;
+                    int lastPct = -5;
+                    while ((n = await src.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
+                    {
+                        await fs.WriteAsync(buffer, 0, n).ConfigureAwait(false);
+                        read += n;
+                        int pct = total > 0 ? (int)(read * 100 / total) : (int)(read / 1024 / 1024);
+                        if (pct - lastPct >= 10)
+                        {
+                            lastPct = pct;
+                            logCallback(total > 0
+                                ? $"[Java] 下载 JRE {major}: {pct}% ({read / 1024 / 1024}/{total / 1024 / 1024} MB)"
+                                : $"[Java] 下载 JRE {major}: {read / 1024 / 1024} MB");
+                        }
+                    }
+                }
             }
         }
 
