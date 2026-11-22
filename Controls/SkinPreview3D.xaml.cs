@@ -406,10 +406,13 @@ namespace CraftGate.Controls
                 RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
                 var material = new DiffuseMaterial(brush);
 
-                // Minecraft 标准披风 UV（64x32）：外层 x=1..11,y=1..17；内层 x=11..21,y=1..17；
-                // 左侧 x=0..1；右侧 x=21..22；顶 x=1..11,y=0..1；底 x=11..21,y=0..1
+                // Minecraft 标准披风 UV（64x32，实测 skinmc#172458 原图 + skinview3d 源码）：
+                // 左侧边 x=0..1；外层(花纹面) x=1..11；右侧边 x=11..12；内层(深色) x=12..22；
+                // 顶边 y=0..1，正面 y=1..17。
+                // 【关键】WPF/DirectX 的纹理 UV 原点在【左下角】，贴图像素原点在左上角 → V 必须翻转！
+                // skinview3d 也是 1.0 - y/textureHeight。之前 V 没翻转 → 取到贴图下半(y15-31)透明区 → 显示白色。
                 double U(double x) => x / 64.0;
-                double V(double y) => y / 32.0;
+                double V(double y) => 1.0 - y / 32.0;
 
                 var positions = new Point3DCollection();
                 var texCoords = new PointCollection();
@@ -435,26 +438,26 @@ namespace CraftGate.Controls
                 AddQuad(new Point3D(xR, yT, zBack), new Point3D(xL, yT, zBack),
                         new Point3D(xL, yB, zBack), new Point3D(xR, yB, zBack),
                         U(1), V(1), U(11), V(17));
-                // 内层(贴身，朝 +Z)：x=11..21
+                // 内层(贴身，朝 +Z)：x=12..22
                 AddQuad(new Point3D(xL, yT, zFront), new Point3D(xR, yT, zFront),
                         new Point3D(xR, yB, zFront), new Point3D(xL, yB, zFront),
-                        U(11), V(1), U(21), V(17));
+                        U(12), V(1), U(22), V(17));
                 // 左侧边 x=0..1
                 AddQuad(new Point3D(xL, yT, zFront), new Point3D(xL, yT, zBack),
                         new Point3D(xL, yB, zBack), new Point3D(xL, yB, zFront),
                         U(0), V(1), U(1), V(17));
-                // 右侧边 x=21..22
+                // 右侧边 x=11..12（外层右边那条）
                 AddQuad(new Point3D(xR, yT, zBack), new Point3D(xR, yT, zFront),
                         new Point3D(xR, yB, zFront), new Point3D(xR, yB, zBack),
-                        U(21), V(1), U(22), V(17));
+                        U(11), V(1), U(12), V(17));
                 // 顶边 x=1..11,y=0..1
                 AddQuad(new Point3D(xL, yT, zBack), new Point3D(xR, yT, zBack),
                         new Point3D(xR, yT, zFront), new Point3D(xL, yT, zFront),
                         U(1), V(0), U(11), V(1));
-                // 底边 x=11..21,y=0..1
+                // 底边 x=12..22,y=0..1
                 AddQuad(new Point3D(xR, yB, zBack), new Point3D(xL, yB, zBack),
                         new Point3D(xL, yB, zFront), new Point3D(xR, yB, zFront),
-                        U(11), V(0), U(21), V(1));
+                        U(12), V(0), U(22), V(1));
 
                 var mesh = new MeshGeometry3D
                 {
