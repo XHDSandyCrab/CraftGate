@@ -183,6 +183,19 @@ namespace CraftGate.ViewModels
         public ICommand ShowBuiltinTabCommand { get; }
         public ICommand ShowOnlineTabCommand { get; }
         public ObservableCollection<CapeEntry> CapeLibrary { get; } = new ObservableCollection<CapeEntry>();
+
+        // 披风库两栏：内置 / 披风网站（与皮肤区一致）
+        private bool _isBuiltinCapeTab = true;
+        public bool IsBuiltinCapeTab
+        {
+            get => _isBuiltinCapeTab;
+            set { if (Set(ref _isBuiltinCapeTab, value)) OnPropertyChanged(nameof(IsOnlineCapeTab)); }
+        }
+        public bool IsOnlineCapeTab => !_isBuiltinCapeTab;
+        public ObservableCollection<CapeEntry> BuiltinCapes { get; } = new ObservableCollection<CapeEntry>();
+        public ObservableCollection<CapeEntry> OnlineCapes { get; } = new ObservableCollection<CapeEntry>();
+        public ICommand ShowBuiltinCapeTabCommand { get; }
+        public ICommand ShowOnlineCapeTabCommand { get; }
         // 皮肤站搜索
         private string _skinQuery = "";
         public string SkinQuery { get => _skinQuery; set => Set(ref _skinQuery, value); }
@@ -294,6 +307,8 @@ namespace CraftGate.ViewModels
             });
             ShowBuiltinTabCommand = new RelayCommand(_ => IsBuiltinTab = true);
             ShowOnlineTabCommand = new RelayCommand(_ => IsBuiltinTab = false);
+            ShowBuiltinCapeTabCommand = new RelayCommand(_ => IsBuiltinCapeTab = true);
+            ShowOnlineCapeTabCommand = new RelayCommand(_ => IsBuiltinCapeTab = false);
             ConfirmSkinNameCommand = new RelayCommand(_ => ConfirmSkinName());
             CancelSkinNameCommand = new RelayCommand(_ => { IsSkinNameModalOpen = false; _pendingSkinPath = null; });
             GoBuiltinPageCommand = new RelayCommand(p =>
@@ -616,8 +631,8 @@ namespace CraftGate.ViewModels
                 var onlineCapes = await SkinLibraryService.ScanOnlineCapesAsync().ConfigureAwait(false);
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    foreach (var c in localCapes) CapeLibrary.Add(c);
-                    foreach (var c in onlineCapes) CapeLibrary.Add(c);
+                    foreach (var c in localCapes) { CapeLibrary.Add(c); BuiltinCapes.Add(c); }
+                    foreach (var c in onlineCapes) { CapeLibrary.Add(c); OnlineCapes.Add(c); }
                 });
             }
             // 披风卡片用 3D 角色预览：给每张卡填充角色皮肤（当前皮肤 or 默认 Steve）。
@@ -627,6 +642,8 @@ namespace CraftGate.ViewModels
             {
                 var modelSkin = SkinImage ?? SkinLibraryService.LoadScaledSkin(modelSkinPath);
                 foreach (var c in CapeLibrary) c.ModelSkin = modelSkin;
+                foreach (var c in BuiltinCapes) c.ModelSkin = modelSkin;
+                foreach (var c in OnlineCapes) c.ModelSkin = modelSkin;
             });
         }
 

@@ -166,6 +166,7 @@
                         <controls:SkinPreview3D Skin="{Binding ModelSkin}"
                                                 Cape="{Binding CapeImage}"
                                                 Animate="{Binding IsSelected}"
+                                                AutoActivate="True"
                                                 Width="100" Height="100"/>
                         <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" MaxWidth="104"/>
@@ -476,14 +477,81 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 选择披风 -->
-                    <Border Style="{StaticResource CardStyle}" Padding="20" Margin="0,0,0,20">
+                    <!-- 选择披风（样式与"选择皮肤"一致：灰底容器 + 两栏切换） -->
+                    <Border Background="#1AFFFFFF" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1"
+                            CornerRadius="12" Padding="24" Margin="0,20,0,0">
                         <StackPanel>
                             <TextBlock Text="选择披风" FontSize="16" FontWeight="Bold"
-                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
-                            <TextBlock Text="选中的披风会显示在角色背后，并在游戏中生效（内置 + skinmc 在线图库）"
-                                       FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,14" TextWrapping="Wrap"/>
-                            <ItemsControl ItemsSource="{Binding CapeLibrary}" ItemTemplate="{StaticResource CapeCardTemplate}">
+                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,14"/>
+
+                            <!-- 两栏切换：内置披风 / 披风网站 -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <Button Content="内置披风" Width="110" Height="34" FontSize="13" FontWeight="Bold" Cursor="Hand"
+                                        Command="{Binding ShowBuiltinCapeTabCommand}" Margin="0,0,10,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#2D3036"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsBuiltinCapeTab}" Value="True">
+                                                    <Setter Property="Background" Value="#5AE89B"/>
+                                                    <Setter Property="Foreground" Value="#0E2419"/>
+                                                </DataTrigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#3A4048"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button Content="披风网站" Width="110" Height="34" FontSize="13" FontWeight="Bold" Cursor="Hand"
+                                        Command="{Binding ShowOnlineCapeTabCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="#2D3036"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsOnlineCapeTab}" Value="True">
+                                                    <Setter Property="Background" Value="#5AE89B"/>
+                                                    <Setter Property="Foreground" Value="#0E2419"/>
+                                                </DataTrigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#3A4048"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- 内置披风 -->
+                            <ItemsControl ItemsSource="{Binding BuiltinCapes}" ItemTemplate="{StaticResource CapeCardTemplate}"
+                                         Visibility="{Binding IsBuiltinCapeTab, Converter={StaticResource BoolToVis}}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                            <!-- 披风网站（skinmc 在线图库） -->
+                            <ItemsControl ItemsSource="{Binding OnlineCapes}" ItemTemplate="{StaticResource CapeCardTemplate}"
+                                         Visibility="{Binding IsOnlineCapeTab, Converter={StaticResource BoolToVis}}">
                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             </ItemsControl>
                         </StackPanel>
