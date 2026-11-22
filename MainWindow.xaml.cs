@@ -407,6 +407,8 @@ namespace CraftGate
             ToastDetailPopup.OpenFrom(toastCenter, toastWidth, _morphToastHeight);
 
             // 通知本体瞬间消失——视觉上由弹窗从它原位"变形"接管，而不是留下一份变灰的副本
+            // 【修复】先取消自动隐藏计时，否则详情打开期间 timer 到点会把通知从视觉树移除，关闭后恢复不出来
+            _currentToast.CancelAutoHide();
             _currentToast.Visibility = Visibility.Collapsed;
             _morphToastHidden = _currentToast;
             // 主内容平滑模糊
@@ -424,6 +426,8 @@ namespace CraftGate
             {
                 _morphToastHidden.Visibility = Visibility.Visible;
                 _morphToastHidden.Opacity = 1;
+                // 恢复后重新安排收起，避免通知永久挂着（之前取消的计时要重启）
+                _morphToastHidden.RestartAutoHide();
                 _morphToastHidden = null;
             }
             AnimateBlur(LeftNavBlur, LeftNavBlur.Radius, 0, 300);

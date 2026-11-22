@@ -132,6 +132,19 @@ namespace CraftGate.Views
             _hideTimer.Start();
         }
 
+        /// <summary>取消自动隐藏计时（点击通知打开详情弹窗时调用，避免详情打开期间被从视觉树移除）。</summary>
+        public void CancelAutoHide()
+        {
+            _hideTimer.Stop();
+        }
+
+        /// <summary>恢复显示后重新开始自动隐藏计时（详情弹窗关闭、通知回归时调用）。</summary>
+        public void RestartAutoHide(double delayMs = 2500)
+        {
+            _hideTimer.Interval = TimeSpan.FromMilliseconds(delayMs);
+            _hideTimer.Start();
+        }
+
         public void Hide()
         {
             _hideTimer.Stop();

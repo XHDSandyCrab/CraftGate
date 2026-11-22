@@ -277,7 +277,6 @@ namespace CraftGate.ViewModels
             IsVersionPopupOpen = false;
             Progress = 0;
             Logs.Clear();
-            _logIndex = 0;
             AddLog("========== 启动流程开始 ==========");
 
             string gameDir = PathManager.GetCurrentAccountGameDir(SelectedVersion);
@@ -416,11 +415,9 @@ namespace CraftGate.ViewModels
             AddLog("========== 启动流程结束 ==========");
         }
 
-        private int _logIndex = 0;
         private void AddLog(string text)
         {
-            // 每条日志开头用递增数字序号（不清零，Logs.Clear 时也重置序号）
-            string logLine = $"[{DateTime.Now:HH:mm:ss}] {++_logIndex}. {text}";
+            string logLine = $"[{DateTime.Now:HH:mm:ss}] {text}";
             if (Application.Current.Dispatcher.CheckAccess()) Logs.Add(logLine);
             else Application.Current.Dispatcher.Invoke(() => Logs.Add(logLine));
         }

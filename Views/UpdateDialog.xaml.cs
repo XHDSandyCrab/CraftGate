@@ -28,16 +28,27 @@ namespace CraftGate.Views
         {
             _result = result;
             VersionText.Text = $"v{result.LatestVersion}  （当前 v{CraftGate.Services.UpdateService.CurrentVersion}）";
-            // 过滤掉内部标记行（[强制更新]/MUST_UPDATE 等），不显示给用户
+            // 过滤内部标记行（[强制更新]/MUST_UPDATE 等），并把 "- " 列表项转成数字序号 1. 2. 3.
             string notes = result.ReleaseNotes ?? "";
             var kept = new System.Collections.Generic.List<string>();
+            int index = 0;
             foreach (var line in notes.Replace("\r\n", "\n").Split('\n'))
             {
                 string t = line.Trim();
                 if (string.IsNullOrWhiteSpace(t)) continue;
                 if (System.Text.RegularExpressions.Regex.IsMatch(t, @"^(\[强制更新\]|\[必须更新\]|MUST_UPDATE)$",
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
-                kept.Add(line);
+                // "- xxx" / "* xxx" / "• xxx" → "N. xxx"
+                var bullet = System.Text.RegularExpressions.Regex.Match(t, @"^[-*•]\s+(.*)$");
+                if (bullet.Success)
+                {
+                    index++;
+                    kept.Add($"{index}. {bullet.Groups[1].Value}");
+                }
+                else
+                {
+                    kept.Add(line);
+                }
             }
             NotesText.Text = kept.Count == 0 ? "暂无更新日志" : string.Join("\n", kept).Trim();
 
