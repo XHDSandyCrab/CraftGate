@@ -372,10 +372,9 @@ namespace CraftGate.Controls
 
                 var transform = new Transform3DGroup();
                 transform.Children.Add(new RotateTransform3D(_sway));
-                // 【披风卡】正后方朝向相机：180°让披风(-Z面)正对镜头，不是侧后方。
-                // 轻微俯视 -6° 看到披风顶面厚度（长方体感），但主体是正后背。
-                // 普通皮肤卡仍用 -32° 正面 3/4 视角。
-                double yAngle = ShowBack ? 180 : -32;
+                // 【披风卡】侧后方：从正后方180°向左转30° → 150°，展示披风+人物侧后 3/4 视角。
+                // 轻微俯视 -6° 保留长方体顶面厚度感。普通皮肤卡仍用 -32° 正面 3/4 视角。
+                double yAngle = ShowBack ? 150 : -32;
                 double xAngle = ShowBack ? -6 : -10;
                 transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), yAngle)));
                 transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), xAngle)));
