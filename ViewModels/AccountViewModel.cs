@@ -344,9 +344,8 @@ namespace CraftGate.ViewModels
                 if (p is PageItem page && page.Number >= 0 && page.Number < TotalOnlineCapePages)
                 {
                     _onlineCapePageIndex = page.Number;
-                    // 翻到已加载的最后一批的末页 → 自动加载下一批
-                    int loadedPages = _loadedCapeBatches * (48 / CapePageSize); // 每批48张=4页
-                    if (_onlineCapePageIndex >= loadedPages - 1)
+                    // 翻到已加载的最后一页 → 自动加载下一批（每批12张=1页）
+                    if (_onlineCapePageIndex >= _loadedCapeBatches - 1)
                         await LoadMoreCapesAsync();
                 }
                 UpdateCapePages();
@@ -680,6 +679,8 @@ namespace CraftGate.ViewModels
             }
             if (match == null) match = BuiltinSkins.FirstOrDefault(s => !s.IsUpload);
             if (match != null) SelectSkinSilently(match);
+            try { System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CraftGate_cape_diag.log"),
+                $"{DateTime.Now:HH:mm:ss} [OpenEdit披风] CapeLibrary.Count={CapeLibrary.Count} 开始加载\n"); } catch { }
             if (CapeLibrary.Count == 0)
             {
                 // 联网补充云端披风（失败不影响本地）
@@ -694,6 +695,7 @@ namespace CraftGate.ViewModels
                 });
                 // 在线披风：下载一张显示一张（渐进），回调在后台线程，逐张切回 UI 添加
                 var modelSkinRef = SelectedSkin?.SkinImage ?? SkinImage;
+                // 【随取随用】首批只加载12张(1页)，避免一次性48张放大建3D模型导致内存爆炸/卡死
                 await SkinLibraryService.ScanOnlineCapesPageAsync(1, c =>
                 {
                     Application.Current.Dispatcher.Invoke(() =>
@@ -701,13 +703,14 @@ namespace CraftGate.ViewModels
                         c.ModelSkin = modelSkinRef;
                         CapeLibrary.Add(c);
                         OnlineCapes.Add(c);
-                        // 边下边更新分页，确保第一页尽快可见
-                        if (OnlineCapes.Count % CapePageSize == 1) UpdateCapePages();
+                        UpdateCapePages(); // 边下边刷新
                     });
-                }).ConfigureAwait(false);
+                }, maxCount: CapePageSize).ConfigureAwait(false);
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                 _loadedCapeBatches = 1; // 首批48张=4个显示页
+                try { System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CraftGate_cape_diag.log"),
+                    $"{DateTime.Now:HH:mm:ss} [OpenEdit披风完成] OnlineCapes.Count={OnlineCapes.Count} CapeLibrary.Count={CapeLibrary.Count}\n"); } catch { }
                 });
             }
             // 披风卡片用 3D 角色预览：给每张卡填充角色皮肤（当前皮肤 or 默认 Steve）。
@@ -719,7 +722,7 @@ namespace CraftGate.ViewModels
             });
         }
 
-        // 懒加载下一批披风（skinmc 下一页 48 张）
+        // 翻到末页时加载下一批披风（skinmc 下一页，12张=1显示页）
         private async Task LoadMoreCapesAsync()
         {
             if (_isLoadingMoreCapes) return;
@@ -727,21 +730,20 @@ namespace CraftGate.ViewModels
             IsLoadingMoreCapes = true;
             try
             {
-                int nextBatch = _loadedCapeBatches + 1; // 第几批（对应 skinmc page=N）
+                int nextBatch = _loadedCapeBatches + 1;
                 var modelSkinRef = SelectedSkin?.SkinImage ?? SkinImage;
                 int before = OnlineCapes.Count;
-                // 下载一张显示一张（渐进）
                 await SkinLibraryService.ScanOnlineCapesPageAsync(nextBatch, c =>
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        // 按 TexturePath 去重
                         if (OnlineCapes.Any(x => x.TexturePath == c.TexturePath)) return;
                         c.ModelSkin = modelSkinRef;
                         OnlineCapes.Add(c);
                         CapeLibrary.Add(c);
+                        UpdateCapePages();
                     });
-                }).ConfigureAwait(false);
+                }, maxCount: CapePageSize).ConfigureAwait(false);
                 await Application.Current.Dispatcher.InvokeAsync(new System.Action(() =>
                 {
                     if (OnlineCapes.Count > before) _loadedCapeBatches = nextBatch;

@@ -227,8 +227,8 @@ namespace CraftGate.Services
         public static Task<List<CapeEntry>> ScanOnlineCapesAsync(int offset = 0)
             => ScanOnlineCapesPageAsync(offset / 48 + 1);
 
-        /// <summary>按 skinmc 页码加载披风（每页约 48 张）。onItem: 每加载一张回调一次（渐进显示用）。</summary>
-        public static async Task<List<CapeEntry>> ScanOnlineCapesPageAsync(int page, Action<CapeEntry> onItem = null)
+        /// <summary>按 skinmc 页码加载披风。onItem: 每加载一张回调一次（渐进显示用）。maxCount: 限制本次加载数量（防止一次性建太多3D模型卡死）。</summary>
+        public static async Task<List<CapeEntry>> ScanOnlineCapesPageAsync(int page, Action<CapeEntry> onItem = null, int maxCount = 48)
         {
             var result = new List<CapeEntry>();
             string cacheDir = Path.Combine(PathManager.SkinsCacheDir, "library", "capes");
@@ -251,6 +251,7 @@ namespace CraftGate.Services
                 int added = 0;
                 foreach (string id in ids)
                 {
+                    if (added >= maxCount) break; // 限制单次加载数量
                     string file = Path.Combine(cacheDir, $"skinmc_{id}.png");
                     try
                     {
@@ -390,8 +391,9 @@ namespace CraftGate.Services
             {
                 var bmp = LoadBitmap(path);
                 if (bmp == null) return null;
-                // 64x32 → 1280x640，最近邻放大保持像素风清晰（和皮肤一致）
-                return SkinService.ScaleBitmapNearestNeighbor(bmp, 20);
+                // 64x32 → 512x256（8倍）：够清晰，且比皮肤20倍省内存。
+                // 披风一次加载48张，20倍(1280x640)会让内存爆到近1GB导致卡死。
+                return SkinService.ScaleBitmapNearestNeighbor(bmp, 8);
             }
             catch { return null; }
         }
