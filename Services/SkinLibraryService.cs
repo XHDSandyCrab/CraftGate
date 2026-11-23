@@ -159,65 +159,63 @@ namespace CraftGate.Services
         };
 
         /// <summary>
-        /// 联网扫描皮肤站，返回云端皮肤列表（带本地缓存，模组式）。
-        /// 先试 minecraftskins.com API；失败则用 minotar 按精选玩家名拉取。
+        /// 联网扫描 skinmc.net 皮肤站，返回云端皮肤列表（带本地缓存）。
+        /// 搜索页 /s?search=关键词&amp;tab=skins 里是 /skins/{uuid} 链接；
+        /// 原图 = /api/v1/renders/skins/{uuid}/skin 【必须带 Referer 详情页头，否则返回64x32预览图而非64x64原图】。
         /// </summary>
-        public static async Task<List<SkinEntry>> ScanOnlineSkinsAsync(string query = "", int offset = 0)
+        public static async Task<List<SkinEntry>> ScanOnlineSkinsAsync(string query = "", int offset = 0,
+            Action<SkinEntry> onItem = null)
         {
             var result = new List<SkinEntry>();
-            string cacheDir = Path.Combine(PathManager.SkinsCacheDir, "library");
+            string cacheDir = Path.Combine(PathManager.SkinsCacheDir, "library", "skins");
             Directory.CreateDirectory(cacheDir);
-
-            // 源1：minecraftskins.com 搜索 API
             try
             {
-                string q = string.IsNullOrWhiteSpace(query) ? "" : Uri.EscapeDataString(query);
-                string url = string.IsNullOrWhiteSpace(query)
-                    ? $"https://api.minecraftskins.com/api/search?mode=all&skin=&sort=trending&start={offset}"
-                    : $"https://api.minecraftskins.com/api/search?mode=all&skin={q}&sort=trending&start={offset}";
-                string json = await _http.GetStringAsync(url).ConfigureAwait(false);
-                var arr = JObject.Parse(json)["skins"] as JArray;
-                if (arr != null)
+                string kw = string.IsNullOrWhiteSpace(query) ? "skin" : Uri.EscapeDataString(query);
+                // skinmc 用 page 分页（offset 无效）：每页约18个，offset/18+1
+                int page = offset / 18 + 1;
+                string searchUrl = $"https://skinmc.net/s?search={kw}&tab=skins&page={page}";
+                string html = await _http.GetStringAsync(searchUrl).ConfigureAwait(false);
+
+                // 抓 /skins/{uuid} 详情链接，去重保序
+                var ids = new System.Collections.Generic.List<string>();
+                foreach (System.Text.RegularExpressions.Match m in
+                    System.Text.RegularExpressions.Regex.Matches(html, @"/skins/([0-9a-fA-F-]{36})"))
                 {
-                    int added = 0;
-                    foreach (var item in arr)
+                    string id = m.Groups[1].Value.ToLowerInvariant();
+                    if (!ids.Contains(id)) ids.Add(id);
+                    if (ids.Count >= 48) break;
+                }
+
+                foreach (string id in ids)
+                {
+                    string file = Path.Combine(cacheDir, $"skinmc_{id}.png");
+                    try
                     {
-                        if (added >= 48) break;
-                        string texture = item["texture"]?.ToString();
-                        string name = item["name"]?.ToString() ?? $"皮肤{added + 1}";
-                        if (string.IsNullOrEmpty(texture)) continue;
-                        string file = Path.Combine(cacheDir, $"online_{offset}_{added}_{Sanitize(name)}.png");
                         if (!File.Exists(file))
                         {
-                            byte[] data = await _http.GetByteArrayAsync(texture).ConfigureAwait(false);
-                            File.WriteAllBytes(file, data);
+                            // 【关键】必须带 Referer 详情页头，服务器才返回 64x64 原始纹理（否则是64x32预览）
+                            string dlUrl = $"https://skinmc.net/api/v1/renders/skins/{id}/skin";
+                            using (var req = new HttpRequestMessage(HttpMethod.Get, dlUrl))
+                            {
+                                req.Headers.Referrer = new Uri($"https://skinmc.net/skins/{id}");
+                                var resp = await _http.SendAsync(req).ConfigureAwait(false);
+                                byte[] data = await resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                                if (data.Length < 24 || !(data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G')) continue;
+                                File.WriteAllBytes(file, data);
+                            }
                         }
-                        result.Add(MakeEntry(name, file, "云端"));
-                        added++;
+                        var entry = MakeEntry($"skinmc {id.Substring(0, 8)}", file, "云端");
+                        result.Add(entry);
+                        onItem?.Invoke(entry); // 渐进显示
                     }
-                    if (result.Count > 0) return result;
+                    catch { }
                 }
+                if (result.Count > 0) return result;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("minecraftskins API 不可用: " + ex.Message);
-            }
-
-            // 源2：minotar 按精选玩家名拉取（国内可访问，保证有云端皮肤）
-            if (!string.IsNullOrWhiteSpace(query)) return result; // 搜索模式下源2不适用
-            foreach (var name in FeaturedNames)
-            {
-                try
-                {
-                    string file = Path.Combine(cacheDir, $"featured_{name}.png");
-                    if (!File.Exists(file))
-                    {
-                        byte[] data = await _http.GetByteArrayAsync($"https://minotar.net/skin/{name}").ConfigureAwait(false);
-                        File.WriteAllBytes(file, data);
-                    }
-                    result.Add(MakeEntry(name, file, "云端"));
-                }
-                catch { }
+                System.Diagnostics.Debug.WriteLine("skinmc 皮肤站扫描失败: " + ex.Message);
             }
             return result;
         }
