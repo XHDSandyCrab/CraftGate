@@ -59,12 +59,10 @@ namespace CraftGate.Services
 
         private static string AssetsDir => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
 
-        /// <summary>获取皮肤列表（内置 + 在线）。</summary>
-        public static async Task<List<SkinEntry>> GetSkinsAsync()
+        /// <summary>获取内置皮肤 + 用户上传的皮肤（本地，快）。</summary>
+        public static List<SkinEntry> GetBuiltinSkins()
         {
             var list = new List<SkinEntry>();
-
-            // 内置精选皮肤
             string skinsDir = Path.Combine(AssetsDir, "skins");
             if (Directory.Exists(skinsDir))
             {
@@ -73,16 +71,11 @@ namespace CraftGate.Services
                     string name = Path.GetFileNameWithoutExtension(f);
                     list.Add(new SkinEntry
                     {
-                        Name = name,
-                        TexturePath = f,
-                        Source = "本地",
-                        HeadImage = SkinHeadService.GetHead(f, 6),
-                        SkinImage = LoadScaledSkin(f)
+                        Name = name, TexturePath = f, Source = "本地",
+                        HeadImage = SkinHeadService.GetHead(f, 6), SkinImage = LoadScaledSkin(f)
                     });
                 }
             }
-
-            // 用户上传的皮肤（持久化：文件名即显示名）
             if (Directory.Exists(PathManager.UploadedSkinsDir))
             {
                 foreach (var f in Directory.GetFiles(PathManager.UploadedSkinsDir, "*.png").OrderBy(x => x))
@@ -90,34 +83,32 @@ namespace CraftGate.Services
                     string name = Path.GetFileNameWithoutExtension(f);
                     list.Add(new SkinEntry
                     {
-                        Name = name,
-                        TexturePath = f,
-                        Source = "本地",
-                        HeadImage = SkinHeadService.GetHead(f, 6),
-                        SkinImage = LoadScaledSkin(f)
+                        Name = name, TexturePath = f, Source = "本地",
+                        HeadImage = SkinHeadService.GetHead(f, 6), SkinImage = LoadScaledSkin(f)
                     });
                 }
             }
+            return list;
+        }
 
-            // 云端皮肤缓存（离线可用）：之前联网拉到的皮肤已存盘，直接加载，
-            // 避免每次启动都依赖不稳定的皮肤站 API（国内常 404/超时导致只剩几个）
-            string cloudDir = Path.Combine(PathManager.SkinsCacheDir, "library");
+        /// <summary>获取皮肤列表（内置 + 在线）。</summary>
+        public static async Task<List<SkinEntry>> GetSkinsAsync()
+        {
+            var list = GetBuiltinSkins();
+
+            // 云端皮肤缓存（离线可用）：只加载新 skinmc 站的缓存（library/skins/skinmc_*.png）。
+            // 【2026-11-23】旧的 featured_*.png / online_*.png 是 minecraftskins 站遗留，
+            // 已切换 skinmc.net，不再加载（否则皮肤网站栏一直显示 Alex/Dream 那批旧图）。
+            string cloudDir = Path.Combine(PathManager.SkinsCacheDir, "library", "skins");
             var cachedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (Directory.Exists(cloudDir))
             {
-                foreach (var f in Directory.GetFiles(cloudDir, "*.png").OrderBy(x => x))
+                foreach (var f in Directory.GetFiles(cloudDir, "skinmc_*.png").OrderBy(x => x))
                 {
                     string raw = Path.GetFileNameWithoutExtension(f);
-                    // online_{offset}_{i}_{name}.png 或 featured_{name}.png → 取真实名字
-                    string name = raw;
-                    if (name.StartsWith("featured_")) name = name.Substring("featured_".Length);
-                    else if (name.StartsWith("online_"))
-                    {
-                        var parts = name.Split('_');
-                        name = parts.Length >= 4 ? string.Join("_", parts.Skip(3)) : name;
-                    }
-                    if (string.IsNullOrWhiteSpace(name)) continue;
-                    if (!cachedNames.Add(name)) continue;  // 同名去重
+                    string uuid = raw.StartsWith("skinmc_") ? raw.Substring("skinmc_".Length) : raw;
+                    string name = "skinmc " + (uuid.Length >= 8 ? uuid.Substring(0, 8) : uuid);
+                    if (!cachedNames.Add(name)) continue;
                     list.Add(new SkinEntry
                     {
                         Name = name,

@@ -358,10 +358,13 @@ namespace CraftGate.ViewModels
                 int page = p is PageItem pi ? pi.Number : (p is int i ? i : 0);
                 if (page >= 0 && page < TotalBuiltinPages) BuiltinPageIndex = page;
             });
-            GoOnlinePageCommand = new RelayCommand(p =>
+            GoOnlinePageCommand = new RelayCommand(async p =>
             {
                 int page = p is PageItem pi ? pi.Number : (p is int i ? i : 0);
                 if (page >= 0 && page < TotalOnlinePages) OnlinePageIndex = page;
+                // 翻到最后一页 → 自动加载 skinmc 下一页（随取随用，像披风）
+                if (page >= TotalOnlinePages - 1)
+                    await LoadMoreOnlineSkinsAsync();
             });
             SearchSkinCommand = new RelayCommand(async _ => await SearchSkinsAsync(reset: true));
             RefreshSkinCommand = new RelayCommand(async _ => await SearchSkinsAsync(reset: true));
@@ -632,14 +635,28 @@ namespace CraftGate.ViewModels
             RefreshEditType();
             RefreshHead();
 
-            // 懒加载皮肤库/披风库（只在第一次打开时加载）
+            // 【随取随用】内置皮肤立即显示；在线 skinmc 皮肤边下边显示（和披风同款渐进加载）
             if (SkinLibrary.Count == 0)
             {
-                var skins = await SkinLibraryService.GetSkinsAsync();
-                SkinLibrary.Clear();
-                foreach (var s in skins) SkinLibrary.Add(s);
+                var builtin = SkinLibraryService.GetBuiltinSkins();
+                foreach (var s in builtin) SkinLibrary.Add(s);
+                SplitSkins(); // 先显示内置，不让用户干等联网
+
+                // 在线皮肤：下载一张显示一张，回调在后台线程 → 逐张切回 UI 添加
+                await SkinLibraryService.ScanOnlineSkinsAsync("", 0, s =>
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (SkinLibrary.Any(x => x.Name == s.Name)) return; // 去重
+                        SkinLibrary.Add(s);
+                        if (SkinLibrary.Count(x => x.Source == "云端") % OnlinePageSize == 1)
+                            SplitSkins(); // 边下边刷新两栏
+                    });
+                }).ConfigureAwait(false);
+                Application.Current.Dispatcher.Invoke(() => SplitSkins());
             }
-            SplitSkins();
+            else
+                SplitSkins();
             // 按账户"当前真实皮肤"内容匹配并高亮，而不是无脑选第一个。
             // 账户 SkinPath 是复制到 skin_{id}.png 的副本，文件名对不上，用内容指纹识别。
             var currentFp = SkinLibraryService.GetSkinFingerprint(acc.SkinPath);
@@ -807,6 +824,29 @@ namespace CraftGate.ViewModels
                 _onlineCapePageIndex = 0;
                 UpdateCapePages();
             });
+        }
+
+        // 皮肤网站翻到末页时加载下一批（随取随用）
+        private bool _isLoadingMoreSkins;
+        private async Task LoadMoreOnlineSkinsAsync()
+        {
+            if (_isLoadingMoreSkins) return;
+            _isLoadingMoreSkins = true;
+            try
+            {
+                int offset = SkinLibrary.Count(s => s.Source == "云端");
+                await SkinLibraryService.ScanOnlineSkinsAsync("", offset, s =>
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (SkinLibrary.Any(x => x.Name == s.Name)) return;
+                        SkinLibrary.Add(s);
+                    });
+                }).ConfigureAwait(false);
+                await Application.Current.Dispatcher.InvokeAsync(new System.Action(() => SplitSkins()));
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("加载更多皮肤失败: " + ex.Message); }
+            finally { _isLoadingMoreSkins = false; }
         }
 
         // 皮肤站搜索/刷新/加载更多：reset=true 从头搜并清空旧云端，false 追加下一页
