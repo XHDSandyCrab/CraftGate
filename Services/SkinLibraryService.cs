@@ -178,29 +178,37 @@ namespace CraftGate.Services
                     if (ids.Count >= 48) break;
                 }
 
-                foreach (string id in ids)
+                // 【并行下载】skinmc 单张响应约4秒，串行18张要69秒；并发6路压到十几秒。
+                // 用 SemaphoreSlim 限制并发，避免请求过猛被站点限流。
+                using (var throttle = new System.Threading.SemaphoreSlim(6))
                 {
-                    string file = Path.Combine(cacheDir, $"skinmc_{id}.png");
-                    try
+                    var tasks = ids.Select(async id =>
                     {
-                        if (!File.Exists(file))
+                        await throttle.WaitAsync().ConfigureAwait(false);
+                        try
                         {
-                            // 【关键】必须带 Referer 详情页头，服务器才返回 64x64 原始纹理（否则是64x32预览）
-                            string dlUrl = $"https://skinmc.net/api/v1/renders/skins/{id}/skin";
-                            using (var req = new HttpRequestMessage(HttpMethod.Get, dlUrl))
+                            string file = Path.Combine(cacheDir, $"skinmc_{id}.png");
+                            if (!File.Exists(file))
                             {
-                                req.Headers.Referrer = new Uri($"https://skinmc.net/skins/{id}");
-                                var resp = await _http.SendAsync(req).ConfigureAwait(false);
-                                byte[] data = await resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                                if (data.Length < 24 || !(data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G')) continue;
-                                File.WriteAllBytes(file, data);
+                                // 【关键】必须带 Referer 详情页头，服务器才返回 64x64 原图（否则是64x32预览）
+                                string dlUrl = $"https://skinmc.net/api/v1/renders/skins/{id}/skin";
+                                using (var req = new HttpRequestMessage(HttpMethod.Get, dlUrl))
+                                {
+                                    req.Headers.Referrer = new Uri($"https://skinmc.net/skins/{id}");
+                                    var resp = await _http.SendAsync(req).ConfigureAwait(false);
+                                    byte[] data = await resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                                    if (data.Length < 24 || !(data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G')) return;
+                                    File.WriteAllBytes(file, data);
+                                }
                             }
+                            var entry = MakeEntry($"skinmc {id.Substring(0, 8)}", file, "云端");
+                            lock (result) result.Add(entry);
+                            onItem?.Invoke(entry); // 下载完一张显示一张
                         }
-                        var entry = MakeEntry($"skinmc {id.Substring(0, 8)}", file, "云端");
-                        result.Add(entry);
-                        onItem?.Invoke(entry); // 渐进显示
-                    }
-                    catch { }
+                        catch { }
+                        finally { throttle.Release(); }
+                    }).ToArray();
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
                 }
                 if (result.Count > 0) return result;
             }
