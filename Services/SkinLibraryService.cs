@@ -394,10 +394,16 @@ namespace CraftGate.Services
             catch { return null; }
         }
 
-        /// <summary>加载原始披风图（64x32，不放大），供 3D 预览使用。</summary>
+        /// <summary>加载披风图并放大20倍（和皮肤 LoadScaledSkin 同原理），供 3D 预览高清显示。</summary>
         private static ImageSource LoadCapeImage(string path)
         {
-            try { return LoadBitmap(path); }
+            try
+            {
+                var bmp = LoadBitmap(path);
+                if (bmp == null) return null;
+                // 64x32 → 1280x640，最近邻放大保持像素风清晰（和皮肤一致）
+                return SkinService.ScaleBitmapNearestNeighbor(bmp, 20);
+            }
             catch { return null; }
         }
 

@@ -306,6 +306,8 @@ namespace CraftGate.Controls
 
                 // ===== 披风：披在角色背后（-Z 方向）=====
                 var capeBmp = Cape as BitmapSource;
+                try { System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CraftGate_cape_diag.log"),
+                    $"{DateTime.Now:HH:mm:ss} [披风诊断] Cape类型={Cape?.GetType().Name ?? "null"} capeBmp={(capeBmp == null ? "null" : capeBmp.PixelWidth + "x" + capeBmp.PixelHeight)} ShowBack={ShowBack}\n"); } catch { }
                 if (capeBmp != null)
                     AddCape(root, capeBmp);
 
@@ -370,11 +372,13 @@ namespace CraftGate.Controls
 
                 var transform = new Transform3DGroup();
                 transform.Children.Add(new RotateTransform3D(_sway));
-                // 【披风卡】背面朝向相机：接近180°让披风(-Z面)正对相机；用176°留一点立体侧边
-                // 之前148°披风朝相机偏右，只在侧面露一条。普通皮肤卡：-32° 正面 3/4 视角
-                double yAngle = ShowBack ? 176 : -32;
+                // 【披风卡】正后方朝向相机：180°让披风(-Z面)正对镜头，不是侧后方。
+                // 轻微俯视 -6° 看到披风顶面厚度（长方体感），但主体是正后背。
+                // 普通皮肤卡仍用 -32° 正面 3/4 视角。
+                double yAngle = ShowBack ? 180 : -32;
+                double xAngle = ShowBack ? -6 : -10;
                 transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), yAngle)));
-                transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), -10)));
+                transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), xAngle)));
 
                 ModelHost.Content = root;
                 ModelHost.Transform = transform;
@@ -397,6 +401,27 @@ namespace CraftGate.Controls
         {
             try
             {
+                // 【关键修复】在线披风图在后台线程加载，直接对它 CroppedBitmap 会抛
+                // "调用线程无法访问此对象，因为另一个线程拥有该对象" → 披风画不出来。
+                // 在 UI 线程克隆并冻结一份，切断原对象的 Dispatcher 归属。
+                BitmapSource capeSrc = cape;
+                try
+                {
+                    int pw = cape.PixelWidth, ph = cape.PixelHeight;
+                    var fmt = cape.Format;
+                    int bpp = fmt.BitsPerPixel / 8;
+                    var pixels = new byte[pw * ph * bpp];
+                    cape.CopyPixels(pixels, pw * bpp, 0); // 纯数据读取，冻结位图跨线程可读
+                    var fresh = BitmapSource.Create(pw, ph, 96, 96, fmt, null, pixels, pw * bpp);
+                    fresh.Freeze();
+                    capeSrc = fresh;
+                }
+                catch (Exception exClone)
+                {
+                    try { System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CraftGate_cape_diag.log"),
+                        $"{DateTime.Now:HH:mm:ss} [克隆失败] {exClone.Message}\n"); } catch { }
+                    capeSrc = cape;
+                }
                 const double cw = 10, ch = 16, depth = 1;
                 double pivotY = 8, pivotZ = -2.6;
                 double centerY = pivotY - ch / 2.0;   // 0
@@ -404,7 +429,7 @@ namespace CraftGate.Controls
 
                 // 用临时 group 收集 6 个面（AddBox 逐面裁剪方式），坐标以披风盒中心为准
                 var capeBox = new Model3DGroup();
-                double scale = cape.PixelWidth / 64.0; // 披风放大图（若 64 则 =1）
+                double scale = capeSrc.PixelWidth / 64.0; // 披风放大图（若 64 则 =1）
                 // 6 面的 UV Rect，顺序必须匹配 AddBox 的 faces：前(+Z)、后(-Z)、左、右、顶、底
                 var uvs = new[]
                 {
@@ -415,7 +440,7 @@ namespace CraftGate.Controls
                     new Rect(1,  0, 10,  1), // 顶
                     new Rect(12, 0, 10,  1)  // 底
                 };
-                AddBox(capeBox, new Point3D(0, centerY, centerZ), cw, ch, depth, uvs, cape, scale);
+                AddBox(capeBox, new Point3D(0, centerY, centerZ), cw, ch, depth, uvs, capeSrc, scale);
 
                 // 绕肩部 pivot 的刚体旋转（平移到肩→绕X摆→平移回）
                 _capeSwing = new AxisAngleRotation3D(new Vector3D(1, 0, 0), CapeBaseAngle);
@@ -426,9 +451,13 @@ namespace CraftGate.Controls
                 capeBox.Transform = swingTransform;
 
                 group.Children.Add(capeBox);
+                try { System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CraftGate_cape_diag.log"),
+                    $"{DateTime.Now:HH:mm:ss} [AddCape完成] capeBox面数={capeBox.Children.Count}\n"); } catch { }
             }
             catch (Exception ex)
             {
+                try { System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CraftGate_cape_diag.log"),
+                    $"{DateTime.Now:HH:mm:ss} [AddCape异常] {ex.Message}\n"); } catch { }
                 System.Diagnostics.Debug.WriteLine("披风渲染异常: " + ex.Message);
             }
         }
